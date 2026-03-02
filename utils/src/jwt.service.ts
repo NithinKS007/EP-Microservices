@@ -10,7 +10,7 @@ export interface Env {
 export interface IJwtPayload extends JwtPayload {
   id: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "user"
 }
 export class JwtService {
   private readonly accessSecret: string;

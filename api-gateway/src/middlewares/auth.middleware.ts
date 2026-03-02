@@ -22,18 +22,20 @@ import { container } from "../container";
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
-    next(new UnauthorizedError("Access token not found"));
+    next(new UnauthorizedError("Access token not found, Please try again later"));
     return;
   }
   const accessToken = authHeader.split(" ")[1];
   if (!accessToken) {
-    next(new UnauthorizedError("Access token not found"));
+    next(new UnauthorizedError("Access token not found, Please try again later"));
     return;
   }
   try {
     const decoded = await container.resolve<JwtService>("jwtService").verifyAT(accessToken);
-    req.headers["x-user-id"] = decoded.userId;
+    req.headers["x-id"] = decoded.id;
     req.headers["x-role"] = decoded.role;
+    req.headers["x-email"] = decoded.email;
+
     next();
   } catch (error: unknown) {
     console.log(`Error in authentication middleware${error} `);

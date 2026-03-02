@@ -1,5 +1,5 @@
 {
-  "name": "@blog-platform-micro-services/saga-orchestrator-service",
+  "name": "saga-orchestrator-service",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",

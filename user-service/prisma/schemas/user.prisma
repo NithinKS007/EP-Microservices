@@ -4,8 +4,8 @@ model User {
   name      String
   password  String
   role      Role?    @default(user)
-  createdAt DateTime @default(now()) @map("_createdAt")
-  updatedAt DateTime @updatedAt @map("_updatedAt")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("user")
 }

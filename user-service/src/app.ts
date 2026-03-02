@@ -1,10 +1,8 @@
 import express, { Request, Response } from "express";
-import dotenv from "dotenv";
 import { router } from "./routes/user.routes";
 import { notFoundMiddleware, errorMiddleware } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 
-dotenv.config();
 const app = express();
 
 app.use(express.json({ limit: "10mb" }));

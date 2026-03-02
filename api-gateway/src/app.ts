@@ -1,10 +1,12 @@
-import { sendResponse, logger, RateLimiter } from "../../utils/src";
+import { sendResponse, logger, RateLimiter, StatusCodes } from "../../utils/src";
 import express, { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
 import { proxyServices } from "./config/service.proxy";
 import { envConfig } from "./config/env.config";
+import { prismaErrorHandler } from "./prisma.error.handler";
+import { AppError } from "../../utils/src/error.handling.middleware";
 
 const app = express();
 
@@ -48,9 +50,14 @@ app.use((req: Request, res: Response) => {
  * Catches all unhandled errors from routes or middleware.
  * Must be the last middleware in the stack.
  */
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use(prismaErrorHandler);
+app.use((err: Error | AppError, req: Request, res: Response, next: NextFunction) => {
+  const isAppError = err instanceof AppError;
+  const statusCode = isAppError ? err.statusCode : StatusCodes.InternalServerError;
+  const message = isAppError ? err.message : "Internal server error";
+
   logger.error(`Unhandled error [ERROR] ${err.message}`);
-  sendResponse(res, 500, null, "Internal server error");
+  sendResponse(res, statusCode, null, message);
 });
 
 export { app };

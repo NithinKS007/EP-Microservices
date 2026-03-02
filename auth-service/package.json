@@ -1,5 +1,5 @@
 {
-  "name": "@blog-platform-micro-services/auth-service",
+  "name": "auth-service",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "kafkajs": "^2.2.4",
     "opossum": "^9.0.0",
+    "reflect-metadata": "^0.2.2",
     "typescript": "^5.9.3",
     "uuid": "^10.0.0"
   },

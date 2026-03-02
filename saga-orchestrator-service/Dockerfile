@@ -19,7 +19,7 @@ COPY saga-orchestrator-service ./saga-orchestrator-service
 WORKDIR /app/saga-orchestrator-service
 
 # Expose app port
-EXPOSE 3002
+EXPOSE 3004
 
 # Start the service
 CMD ["npm", "run", "dev"]

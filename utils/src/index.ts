@@ -1,6 +1,4 @@
 export { asyncHandler } from "./async.handler";
-export { authorizeRole } from "./authorization.middleware";
-export { CustomReq } from "./customReq";
 export { errorMiddleware } from "./error.handling.middleware";
 export { sendResponse } from "./http.response";
 export { StatusCodes } from "./http.status.codes";
@@ -30,3 +28,6 @@ export { SendUnaryData, ServerUnaryCall } from "./grpc/types";
 export { toGrpcError, fromGrpcError } from "./grpc/grpc.error.mapper";
 export { hashPassword, comparePassword } from "./hash";
 export { validateDto } from "./validate.dtos";
+export { EmailService } from "./email.service";
+export { TokenService } from "./token.service";
+export { AuthReq, AuthMiddleware } from "./auth.middleware";

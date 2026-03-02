@@ -1,37 +1,27 @@
+import { Prisma } from "../generated/prisma/client";
 import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
-import { Prisma, PrismaClient } from "../generated/prisma/client";
 
-// --- Prisma Model Types ---
+/**
+ * Prisma-backed User domain model
+ */
 export type UserModel = Prisma.UserGetPayload<{}>;
-export type CreateArgs = Prisma.UserCreateArgs;
-export type FindUniqueArgs = Prisma.UserFindUniqueArgs;
-export type FindFirstArgs = Prisma.UserFindFirstArgs;
-export type UpdateArgs = Prisma.UserUpdateArgs;
-export type DeleteArgs = Prisma.UserDeleteArgs;
 
-// --- Prisma Delegate Type ---
-export type UserDelegate = PrismaClient["user"];
+/**
+ * Types for repository operations
+ */
+export type UserCreateData = Prisma.UserCreateInput;
+export type UserUpdateData = Prisma.UserUpdateInput;
+export type UserWhere = Prisma.UserWhereInput;
+export type UserFindManyArgs = Prisma.UserFindManyArgs;
 
-// --- DTOs (for API or Service Layer) ---
-export interface CreateUserData {
-  email: String;
-  name: String;
-  password: String;
-}
-
-export interface UpdateUserData {
-  email: String;
-  name: String;
-  password: String;
-}
-
+/**
+ * User Repository contract
+ * Defines all supported persistence operations for User entity
+ */
 export interface IUserRepository extends DatabaseAdapter<
-  Partial<UserModel>,
-  Partial<UserModel>,
-  Partial<UserModel>,
-  Partial<UserModel>
-> {
-  findUserByEmail(email: string): Promise<UserModel | null>;
-  createUser(data: CreateUserData): Promise<UserModel>;
-  findUserById(id: string): Promise<UserModel | null>;
-}
+  UserModel,
+  UserCreateData,
+  UserUpdateData,
+  UserWhere,
+  UserFindManyArgs
+> {}

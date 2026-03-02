@@ -1,0 +1,37 @@
+model Seat {
+    id      String @id @default(uuid()) @db.Uuid
+    eventId String @map("fk_event_id") @db.Uuid
+
+    seatNumber String   @map("seat_number")
+    seatTier   SeatTier
+    price      Decimal  @db.Decimal(10, 2)
+
+    seatStatus    SeatStatus @default(available)
+    lockExpiresAt DateTime?  @map("lock_expires_at")
+
+    event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@unique([eventId, seatNumber])
+    @@index([eventId])
+    @@index([seatStatus])
+    @@map("seats")
+}
+
+enum SeatStatus {
+    available
+    locked
+    sold
+
+    @@map("enum_seat_status")
+}
+
+enum SeatTier {
+    vip
+    regular
+    economy
+
+    @@map("enum_seat_tier")
+}

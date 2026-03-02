@@ -15,7 +15,7 @@ export class UserService {
 
   async findUserById(id: string): Promise<UserEntity> {
     if (!id) throw new ValidationError("User id is required");
-    const user = await this.userRepository.findUserById(id);
+    const user = await this.userRepository.findById(id);
 
     if (!user) throw new NotFoundError("User not found,Please try again later");
 
@@ -27,15 +27,15 @@ export class UserService {
     const { email, password, name } = data;
     if (!email || !password || !name)
       throw new ValidationError("Email,password and name are required");
-    const userData = await this.userRepository.findUserByEmail(email);
+    const userData = await this.userRepository.findOne({ email });
     if (userData) throw new ConflictError("Email already exists");
-    await this.userRepository.createUser({ ...data, password: await hashPassword(password) });
+    await this.userRepository.create({ ...data, password: await hashPassword(password) });
   }
 
   async signin(data: { email: string; password: string }): Promise<UserEntity> {
     const { email, password } = data;
     if (!email || !password) throw new ValidationError("Email and password are required");
-    const userData = await this.userRepository.findUserByEmail(email);
+    const userData = await this.userRepository.findOne({ email });
 
     if (!userData) throw new NotFoundError("User not found,Please try again later");
 

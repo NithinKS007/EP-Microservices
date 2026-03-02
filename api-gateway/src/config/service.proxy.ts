@@ -35,6 +35,12 @@ class ServiceProxy {
       url: envConfig.USER_SERVICE_URL,
       publicRoutes: ["/health"],
     },
+    {
+      name: "event-service",
+      path: "/event-service",
+      url: envConfig.EVENT_SERVICE_URL,
+      publicRoutes: ["/health"],
+    },
   ];
 
   /**
@@ -114,8 +120,9 @@ class ServiceProxy {
     req: IncomingMessage & { body?: any },
     res: ServerResponse,
   ): void {
-    if (req.headers["x-user-id"]) proxyReq.setHeader("x-user-id", req.headers["x-user-id"]);
+    if (req.headers["x-id"]) proxyReq.setHeader("x-id", req.headers["x-id"]);
     if (req.headers["x-role"]) proxyReq.setHeader("x-role", req.headers["x-role"]);
+    if (req.headers["x-email"]) proxyReq.setHeader("x-email", req.headers["x-email"]);
 
     const requestId = req.headers["x-request-id"] || `${Date.now()}-${Math.random()}`;
     proxyReq.setHeader("x-request-id", requestId);

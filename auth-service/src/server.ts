@@ -1,3 +1,4 @@
+import "reflect-metadata"; 
 import { container } from "./container";
 import { KafkaService, logger } from "../../utils/src";
 import { app } from "./app";
