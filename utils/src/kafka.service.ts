@@ -110,4 +110,28 @@ export class KafkaService {
     });
     console.log(`[Kafka] Subscribed to topic: ${topic}`);
   }
+
+  async consumeEvents<T>(
+    consumers: { topic: string; handler: MessageHandler<T> }[],
+  ): Promise<void> {
+    for (const { topic } of consumers) {
+      await this.consumer.subscribe({ topic, fromBeginning: false });
+      console.log(`[Kafka] Subscribed to topic: ${topic}`);
+    }
+
+    await this.consumer.run({
+      eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
+        try {
+          if (!message?.value) return;
+          const parsed = JSON.parse(message.value.toString());
+          const match = consumers.find((c) => c.topic === topic);
+          if (match) {
+            await match.handler(parsed);
+          }
+        } catch (err) {
+          console.error(`[Kafka Consumer] Error on topic "${topic}"`, err);
+        }
+      },
+    });
+  }
 }

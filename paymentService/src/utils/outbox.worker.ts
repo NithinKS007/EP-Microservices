@@ -5,10 +5,13 @@ import { OutboxEvent } from "../entity/outbox.event.entity";
 export class OutboxWorker {
   private readonly outboxEventRepository: IOutboxEventRepository;
   private readonly kafkaService: KafkaService;
+
   private readonly MAX_RETRIES = 5;
   private readonly BASE_DELAY_MS = 1000; // 1s
   private readonly MAX_DELAY_MS = 60000; // 60s
   private readonly BATCH_SIZE = 50;
+  private readonly POLL_INTERVAL = 500;
+  private isRunning = false;
 
   constructor({
     outboxEventRepository,
@@ -21,37 +24,44 @@ export class OutboxWorker {
     this.kafkaService = kafkaService;
   }
 
+  async start() {
+    this.isRunning = true;
+
+    this.setupGracefulShutdown();
+
+    logger.info("🚀 Outbox Worker started");
+
+    while (this.isRunning) {
+      try {
+        await this.processBatch();
+      } catch (err) {
+        logger.error(`Outbox worker fatal error ${err}`);
+      }
+
+      await this.sleep(this.POLL_INTERVAL);
+    }
+
+    logger.info("🛑 Outbox Worker stopped");
+  }
+
   async processBatch(): Promise<void> {
     const events = await this.outboxEventRepository.fetchBatch(this.BATCH_SIZE);
+
     if (!events.length) return;
+
     const successIds: string[] = [];
 
-    for (const event of events) {
-      try {
-        const payload = event.payload as {
-          eventId: string; // RANDOM ID GENERATED
-          paymentId: string; // PAYMENT ENTITY ID
-          bookingId: string; // BOOKING ENTITY ID
-        };
-        const data = {
-          paymentId: payload.paymentId,
-          bookingId: payload.bookingId,
-        };
-
-        logger.info(`Processing outbox event ${data}`);
-
-        await this.kafkaService.publishMessage({
-          topic: event.topic,
-          message: {
-            ...data,
-          },
-        });
-
-        successIds.push(event.id);
-      } catch (err) {
-        await this.handleFailure(event, err);
-      }
-    }
+    // Parallel processing with limit
+    await Promise.all(
+      events.map(async (event) => {
+        try {
+          await this.processSingleEvent(event);
+          successIds.push(event.id);
+        } catch (err) {
+          await this.handleFailure(event, err);
+        }
+      }),
+    );
 
     if (successIds.length > 0) {
       await this.outboxEventRepository.updateMany(successIds, {
@@ -59,44 +69,50 @@ export class OutboxWorker {
         processedAt: new Date(),
       });
 
-      logger.info(`Updated outbox events`);
+      logger.info(`Outbox events processed: ${successIds.length}`);
     }
   }
 
-  private async handleFailure<T>(event: OutboxEvent, err: T) {
+  /* ------------------- SINGLE EVENT ------------------- */
+
+  private async processSingleEvent(event: OutboxEvent) {
+    // Use payload directly to support generic events without code changes
+    const message = event.payload;
+
+    logger.info(`Outbox event processed: ${event.id}`);
+
+    await this.kafkaService.publishMessage({
+      topic: event.topic,
+      message,
+    });
+  }
+
+  private async handleFailure(event: OutboxEvent, err: any) {
     const retryCount = event.retryCount + 1;
 
     if (retryCount >= this.MAX_RETRIES) {
-      logger.error("Outbox event moved to FAILED");
+      logger.error(`Outbox event failed after ${retryCount} retries`);
 
       await this.outboxEventRepository.update(
         { id: event.id },
         {
           status: "FAILED",
           processedAt: new Date(),
+          error: err.message || "Unknown error",
         },
       );
-
-      // 🔥 Optional: push to DLQ table
-      // await this.deadLetterRepository.create(...)
 
       return;
     }
 
-    // Exponential backoff with cap
-    const delay = Math.min(Math.pow(2, retryCount) * this.BASE_DELAY_MS, this.MAX_DELAY_MS);
+    // Exponential backoff + jitter
+    const baseDelay = Math.min(Math.pow(2, retryCount) * this.BASE_DELAY_MS, this.MAX_DELAY_MS);
 
-    const nextRetryAt = new Date(Date.now() + delay);
+    const jitter = Math.random() * 500; // Prevent sync retries
 
-    logger.warn(
-      `Outbox retry scheduled ${{
-        eventId: event.id,
-        delay,
-        retryCount,
-        nextRetryAt,
-        error: err,
-      }}`,
-    );
+    const nextRetryAt = new Date(Date.now() + baseDelay + jitter);
+
+    logger.warn(`Outbox event failed, retrying in ${baseDelay}ms`);
 
     await this.outboxEventRepository.update(
       { id: event.id },
@@ -105,5 +121,19 @@ export class OutboxWorker {
         nextRetryAt,
       },
     );
+  }
+
+  private setupGracefulShutdown() {
+    const shutdown = () => {
+      logger.info("Received shutdown signal");
+      this.isRunning = false;
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+  }
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

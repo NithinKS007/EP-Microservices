@@ -8,6 +8,9 @@ import { prisma } from "./utils/dbconfig";
 import { PaymentGrpcController } from "./grpc/payment.server";
 import { WebhookController } from "./controllers/webhook.controller";
 import { OutboxEventRepository } from "./repositories/outbox.event.repository";
+import { OutboxWorker } from "./utils/outbox.worker";
+import { PaymentSuccessConsumer } from "./utils/payment.success.consumer";
+import { PaymentFailedConsumer } from "./utils/payment.failed.consumer";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -35,6 +38,11 @@ container.register({
 
   paymentGrpcController: asClass(PaymentGrpcController).scoped(),
   webhookController:asClass(WebhookController).scoped(),
+
+  outboxWorker: asClass(OutboxWorker).scoped(),
+
+  paymentSuccessConsumer: asClass(PaymentSuccessConsumer).scoped(),
+  paymentFailedConsumer: asClass(PaymentFailedConsumer).scoped(),
 });
 
 export { container };

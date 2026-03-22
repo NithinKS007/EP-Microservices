@@ -22,13 +22,18 @@ export class OutboxEventRepository
 
   async fetchBatch(limit: number): Promise<OutboxEventModel[]> {
     return await this.prisma.$queryRaw<OutboxEventModel[]>`
-    SELECT * FROM outbox_events
-    WHERE status = 'PENDING'
-    AND next_retry_at <= NOW()
-    ORDER BY created_at ASC
-    FOR UPDATE SKIP LOCKED
-    LIMIT ${limit}
-  `;
+      UPDATE outbox_events
+      SET next_retry_at = NOW() + INTERVAL '2 minutes'
+      WHERE id IN (
+        SELECT id FROM outbox_events
+        WHERE status = 'PENDING'
+        AND next_retry_at <= NOW()
+        ORDER BY created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT ${limit}
+      )
+      RETURNING *
+    `;
   }
 
   async updateMany(ids: string[], data: TUpdate): Promise<void> {

@@ -24,7 +24,6 @@ export class RedisService {
     this.setupListeners();
   }
 
-  /* ------------------- INIT ------------------- */
   private setupListeners() {
     // Fires when there is an error
     this.client.on("error", (err) => {
@@ -70,8 +69,6 @@ export class RedisService {
       logger.error(`❌ Redis DB ${this.db} failed to disconnect ${err}`);
     }
   }
-
-  /* ------------------- CACHE OPERATIONS ------------------- */
 
   private ensureConnected() {
     if (!this.client.isOpen) {
@@ -137,7 +134,7 @@ export class RedisService {
     this.ensureConnected();
     try {
       const result = await this.client.set(key, value, { NX: true, EX: ttl });
-      logger.info(`🔒 Redis DB ${this.db}: SETNX key="${key}", ttl=${ttl}, result=${result}`);
+      logger.info(`Redis DB ${this.db}: SETNX key="${key}", ttl=${ttl}, result=${result}`);
       return result;
     } catch (err) {
       logger.error(`❌ Redis DB ${this.db}: Failed to SETNX key="${key}" ${err}`);
