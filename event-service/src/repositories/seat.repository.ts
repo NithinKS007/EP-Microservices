@@ -54,4 +54,45 @@ export class SeatRepository
 
     return { data, meta: { total, page, limit } };
   }
+
+  async lockSeats(
+    bookingId: string,
+    eventId: string,
+    expiryDate: Date,
+    seatIds: string[],
+  ): Promise<void> {
+    await this.prisma.seat.updateMany({
+      where: { eventId, id: { in: seatIds }, seatStatus: "AVAILABLE" },
+      data: { seatStatus: "LOCKED", lockedByBookingId: bookingId, lockExpiresAt: expiryDate },
+    });
+  }
+
+  async confirmSeats(bookingId: string): Promise<void> {
+    await this.prisma.seat.updateMany({
+      where: {
+        lockedByBookingId: bookingId,
+        seatStatus: "LOCKED",
+        lockExpiresAt: {
+          gt: new Date(),
+        },
+      },
+      data: {
+        seatStatus: "SOLD",
+      },
+    });
+  }
+
+  async releaseSeats(bookingId: string) {
+    await this.prisma.seat.updateMany({
+      where: {
+        lockedByBookingId: bookingId,
+        seatStatus: "LOCKED",
+      },
+      data: {
+        seatStatus: "AVAILABLE",
+        lockedByBookingId: null,
+        lockExpiresAt: null,
+      },
+    });
+  }
 }

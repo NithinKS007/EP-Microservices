@@ -33,6 +33,6 @@ export const envConfig: Env = {
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "true",
 
   //GRPC
-  USER_SERVICE_URL_GRPC: process.env.USER_SERVICE_URL_GRPC || "user:3002",
+  USER_SERVICE_URL_GRPC: process.env.USER_SERVICE_URL_GRPC || "user:50051",
 };
 

@@ -2,15 +2,15 @@ import { IsString, IsNumber, IsOptional, IsEnum, IsArray, ValidateNested, IsDate
 import { Type } from "class-transformer";
 
 export enum SeatStatus {
-  available = "available",
-  locked = "locked",
-  sold = "sold",
+  AVAILABLE = "AVAILABLE",
+  LOCKED = "LOCKED",
+  SOLD = "SOLD",
 }
 
 export enum SeatTier {
-  vip = "vip",
-  regular = "regular",
-  economy = "economy",
+  VIP = "VIP",
+  REGULAR = "REGULAR",
+  ECONOMY = "ECONOMY",
 }
 
 export class CreateSeatDto {

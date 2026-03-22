@@ -1,0 +1,15 @@
+model BookingSeat {
+    id        String  @id @default(uuid())
+    bookingId String   @map("fk_booking_id") @db.Uuid
+    seatId    String   @map("fk_seat_id") @db.Uuid
+    price     Decimal @db.Decimal(10, 2)
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    booking   Booking  @relation(fields: [bookingId], references: [id])
+
+    @@unique([seatId])
+    @@index([bookingId])
+    @@map("bookingSeat")
+}

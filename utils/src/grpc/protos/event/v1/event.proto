@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package event.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service EventService {
+  rpc LockSeats(LockSeatsRequest) returns (LockSeatsResponse);
+  rpc ConfirmSeats(ConfirmSeatsRequest) returns (ConfirmSeatsResponse);
+  rpc ReleaseSeats(ReleaseSeatsRequest) returns (ReleaseSeatsResponse);
+}
+
+message LockSeatsRequest {
+  string event_id = 1;
+  repeated string seat_ids = 2;
+  string booking_id = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message LockSeatsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ConfirmSeatsRequest {
+  string booking_id = 1;
+}
+
+message ConfirmSeatsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ReleaseSeatsRequest {
+  string booking_id = 1;
+}
+
+message ReleaseSeatsResponse {
+  bool success = 1;
+  string message = 2;
+}

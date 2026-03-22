@@ -5,7 +5,7 @@ import { logger } from "../../utils/src/logger";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
-
+import { startEventGrpcServer } from "./grpc/start.server";
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -64,6 +64,7 @@ const startServer = async () => {
       );
     });
 
+    startEventGrpcServer();
 
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {

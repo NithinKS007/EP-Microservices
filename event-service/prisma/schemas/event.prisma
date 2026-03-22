@@ -4,7 +4,7 @@ model Event {
   description String?
   venueName   String      @map("venue_name")
   eventDate   DateTime    @map("event_date")
-  status      EventStatus @default(active)
+  status      EventStatus @default(ACTIVE)
 
   seats Seat[]
 
@@ -16,8 +16,8 @@ model Event {
 }
 
 enum EventStatus {
-  active
-  cancelled
+  ACTIVE
+  CANCELLED
 
   @@map("enum_event_status")
 }

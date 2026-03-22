@@ -21,12 +21,12 @@ export class AuthService {
     name: string;
     email: string;
     password: string;
-    role?: "admin";
+    role?: "ADMIN" | "USER" | undefined;
   }): Promise<void> {
     const { email, password, name, role } = data;
     if (!email || !password || !name) throw new Error("Email,password and name are required");
 
-    if (role === "admin") {
+    if (role === "ADMIN") {
       throw new ValidationError("Invalid role, Please try again later");
     }
     await this.userServiceGrpcClient.signupUser({
@@ -65,18 +65,18 @@ export class AuthService {
     };
   }
 
-  private mapRole(role: unknown): "admin" | "user" {
-    // 1. If it's the string "admin" or the gRPC-equivalent number/value
-    if (role === "admin" || role === 0) {
+  private mapRole(role: unknown): "ADMIN" | "USER" {
+    // 1. If it's the string "ADMIN" or the gRPC-equivalent number/value
+    if (role === "ADMIN" || role === 0) {
       // Check what your gRPC returns (usually 0 or 1)
-      return "admin";
+      return "ADMIN";
     }
 
-    // 2. If it's the string "user" or the gRPC-equivalent number
-    if (role === "user" || role === 1) {
-      return "user";
+    // 2. If it's the string "USER" or the gRPC-equivalent number
+    if (role === "USER" || role === 1) {
+      return "USER";
     }
 
-    return "user";
+    return "USER";
   }
 }

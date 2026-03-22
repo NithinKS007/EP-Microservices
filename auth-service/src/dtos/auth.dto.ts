@@ -1,8 +1,8 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from "class-validator";
 
 export enum UserRole {
-  ADMIN = "admin",
-  USER = "user",
+  ADMIN = "ADMIN",
+  USER = "USER",
 }
 
 export class SignupRequestDto {

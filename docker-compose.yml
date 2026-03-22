@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis
+    env_file:
+      - ./.redis.env
+    command: redis-server --requirepass redis0nks0password@123
+    ports:
+      - "6380:6379"
+    networks:
+      - backend
+
   postgres:
     image: postgres:15
     restart: always
@@ -68,6 +78,12 @@ services:
         condition: service_started
       user:
         condition: service_started
+      event:
+        condition: service_started
+      booking:
+        condition: service_started
+      payment:
+        condition: service_started
     networks:
       - backend
       
@@ -83,6 +99,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+      # redis:
+      #   condition: service_started
     networks:
       - backend
 
@@ -98,10 +116,10 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+      # redis:
+      #   condition: service_started        
     networks:
       - backend
-    volumes:
-      - ./user-service:/app/user-service
   
   event:
     build:
@@ -115,11 +133,45 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+      # redis:
+      #   condition: service_started        
     networks:
       - backend
-    volumes:
-      - ./event-service:/app/event-service
 
+  booking:
+    build:
+      context: .
+      dockerfile: ./booking-service/Dockerfile
+    restart: always      
+    env_file:
+      - ./booking-service/.env
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      # redis:
+      #   condition: service_started
+    networks:
+      - backend
+    
+  payment:
+    build:
+      context: .
+      dockerfile: ./payment-service/Dockerfile
+    restart: always      
+    env_file:
+      - ./payment-service/.env
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      # redis:
+      #   condition: service_started
+    networks:
+      - backend
+      
   saga-orchestrator:
     build:
       context: .
@@ -128,8 +180,12 @@ services:
     env_file:
       - ./saga-orchestrator-service/.env
     depends_on:
+      postgres:
+        condition: service_started
       kafka:
         condition: service_healthy
+      # redis:
+      #   condition: service_started
     networks:
       - backend
 

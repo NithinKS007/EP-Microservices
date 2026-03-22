@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package payment.v1;
+
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+}
+
+message CreatePaymentRequest {
+  string booking_id = 1;
+  string user_id = 2;
+  double amount = 3;
+  string currency = 4;
+  string provider = 5;
+}
+
+message CreatePaymentResponse {
+  bool success = 1;
+  string message = 2;
+}

@@ -10,7 +10,7 @@ const eventController = container.resolve<EventController>("eventController");
 const authMidUtils = container.resolve<AuthMiddleware>("authMidUtils");
 
 router.use(authMidUtils.context.bind(authMidUtils));
-router.use(authMidUtils.authorize(["admin"]));
+router.use(authMidUtils.authorize(["ADMIN"]));
 
 router.post("/", asyncHandler(eventController.create.bind(eventController)));
 router.get("/", asyncHandler(eventController.findEventsWithPagination.bind(eventController)));

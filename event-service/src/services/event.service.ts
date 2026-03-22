@@ -39,7 +39,7 @@ export class EventService {
       name,
       venueName,
       description,
-      status: "active",
+      status: "ACTIVE",
     });
   }
 
@@ -77,7 +77,7 @@ export class EventService {
     }
     const soldSeats = await this.seatRepository.count({
       eventId: id,
-      seatStatus: "sold",
+      seatStatus: "SOLD",
     });
     if (soldSeats > 0) {
       throw new ConflictError("Event with sold seats cannot be deleted. Cancel it instead.");
@@ -90,6 +90,6 @@ export class EventService {
     if (!event) {
       throw new NotFoundError("Event not found");
     }
-    return this.eventRepository.update({ id }, { status: "cancelled" });
+    return this.eventRepository.update({ id }, { status: "CANCELLED" });
   }
 }

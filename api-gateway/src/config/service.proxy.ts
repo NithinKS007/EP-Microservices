@@ -41,6 +41,18 @@ class ServiceProxy {
       url: envConfig.EVENT_SERVICE_URL,
       publicRoutes: ["/health"],
     },
+    {
+      name: "booking-service",
+      path: "/booking-service",
+      url: envConfig.BOOKING_SERVICE_URL,
+      publicRoutes: ["/health"],
+    },
+    {
+      name: "payment-service",
+      path: "/payment-service",
+      url: envConfig.PAYMENT_SERVICE_URL,
+      publicRoutes: ["/health"],
+    }
   ];
 
   /**

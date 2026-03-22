@@ -10,7 +10,7 @@ const seatController = container.resolve<SeatController>("seatController");
 const authMidUtils = container.resolve<AuthMiddleware>("authMidUtils");
 
 router.use(authMidUtils.context.bind(authMidUtils));
-router.use(authMidUtils.authorize(["admin"]));
+router.use(authMidUtils.authorize(["ADMIN"]));
 
 router.post("/", asyncHandler(seatController.create.bind(seatController)));
 router.get("/", asyncHandler(seatController.findSeatsWithPagination.bind(seatController)));

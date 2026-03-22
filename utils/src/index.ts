@@ -6,7 +6,7 @@ export { notFoundMiddleware } from "./not.found.middleware";
 export { RateLimiter } from "./rate.limit.middleware";
 export { codeGenerator } from "./code-generator";
 export { logger } from "./logger";
-export { DatabaseAdapter } from "./IBase.repository"
+export { DatabaseAdapter } from "./IBase.repository";
 export { KafkaService } from "./kafka.service";
 export { JwtService } from "./jwt.service";
 export { createGrpcClient } from "./grpc/grpc.client";
@@ -17,13 +17,44 @@ export {
   SignupUserRequest,
   SignupUserResponse,
   UserServiceClient,
-  DeepPartial,
-  Exact,
   UserServiceServer,
   UserServiceService,
-  protobufPackage,
   Role,
 } from "./grpc/generated/user";
+
+export {
+  FindBookingRequest,
+  FindBookingResponse,
+  UpdateBookingStatusRequest,
+  UpdateBookingStatusResponse,
+  UpdateBookingAmountRequest,
+  UpdateBookingAmountResponse,
+  BookingServiceClient,
+  BookingServiceServer,
+  BookingServiceService,
+  BookingStatus,
+} from "./grpc/generated/booking";
+
+export {
+  LockSeatsRequest,
+  LockSeatsResponse,
+  ConfirmSeatsRequest,
+  ConfirmSeatsResponse,
+  ReleaseSeatsRequest,
+  ReleaseSeatsResponse,
+  EventServiceClient,
+  EventServiceServer,
+  EventServiceService,
+} from "./grpc/generated/event";
+
+export {
+  CreatePaymentRequest,
+  CreatePaymentResponse,
+  PaymentServiceClient,
+  PaymentServiceServer,
+  PaymentServiceService,
+} from "./grpc/generated/payment";
+
 export { SendUnaryData, ServerUnaryCall } from "./grpc/types";
 export { toGrpcError, fromGrpcError } from "./grpc/grpc.error.mapper";
 export { hashPassword, comparePassword } from "./hash";

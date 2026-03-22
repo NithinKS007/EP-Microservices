@@ -49,8 +49,8 @@ export class UserService {
     return { ...safeUser, role };
   }
 
-  private mapRole(role: "admin" | "user" | null): "admin" | "user" | undefined {
-    if (role === "admin" || role === "user") {
+  private mapRole(role: "ADMIN" | "USER" | null): "ADMIN" | "USER" | undefined {
+    if (role === "ADMIN" || role === "USER") {
       return role;
     }
     return undefined;

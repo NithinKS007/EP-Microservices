@@ -1,0 +1,31 @@
+model Booking {
+  id      String @id @default(uuid()) 
+  userId  String @map("fk_users_id") @db.Uuid
+  eventId String @map("fk_event_id") @db.Uuid
+
+  status      BookingStatus
+  totalAmount Decimal       @map("total_amount") @db.Decimal(10, 2)
+
+  expiresAt      DateTime @map("expires_at") //  booking-level lock expiry
+  idempotencyKey String?  @unique
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  bookingSeats BookingSeat[]
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status, expiresAt])
+  @@map("booking")
+}
+
+enum BookingStatus {
+  PENDING
+  PAYMENT_INITIATED
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+
+  @@map("enum_booking_status")
+}

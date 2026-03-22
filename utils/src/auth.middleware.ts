@@ -4,7 +4,7 @@ import { UnauthorizedError, ForbiddenError } from "./error.handling.middleware";
 export interface AuthReq extends Request {
   user?: {
     id: string;
-    role: "admin" | "user";
+    role: "ADMIN" | "USER";
     email: string;
   };
 }
@@ -24,7 +24,7 @@ export class AuthMiddleware {
 
     req.user = {
       id: String(id),
-      role: role === "admin" ? "admin" : "user",
+      role: role === "ADMIN" ? "ADMIN" : "USER",
       email: String(email),
     };
 
@@ -34,7 +34,7 @@ export class AuthMiddleware {
   /**
    * Authorizes user based on role
    */
-  public authorize(roles: Array<"admin" | "user">) {
+  public authorize(roles: Array<"ADMIN" | "USER">) {
     return (req: AuthReq, res: Response, next: NextFunction) => {
       if (!req.user || !roles.includes(req.user.role)) {
         throw new ForbiddenError("You are not allowed to access this resource");
