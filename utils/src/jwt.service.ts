@@ -1,4 +1,5 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { Response } from "express";
 
 export interface Env {
   JWT_ACCESS_TOKEN_SECRET: string;
@@ -88,4 +89,21 @@ export class JwtService {
       });
     });
   }
+
+  setRefreshTokenCookie = (res: Response, refreshToken: string, mode: "PROD" | "DEV"): void => {
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: mode === "PROD" ? "none" : "strict",
+      secure: mode === "PROD",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  };
+
+  clearRefreshTokenCookie = (res: Response, mode: "PROD" | "DEV"): void => {
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: mode === "PROD" ? "none" : "strict",
+      secure: mode === "PROD",
+    });
+  };
 }

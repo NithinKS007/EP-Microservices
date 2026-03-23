@@ -1,6 +1,7 @@
 import { UserService } from "services/user.service";
-import { sendResponse } from "../../../utils/src";
+import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Request, Response } from "express";
+import { FindUserByIdRequestDto } from "./../dtos/user.dto";
 
 export class UserController {
   private readonly userService: UserService;
@@ -8,9 +9,10 @@ export class UserController {
     this.userService = userService;
   }
 
-  async findUserById(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const result = await this.userService.findUserById(id);
-    sendResponse(res, 200, result, "User found successfully");
+  async findUserById(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(FindUserByIdRequestDto, req.params);
+    const { id } = data;
+    const result = await this.userService.findUserById(id, false);
+    sendResponse(res, StatusCodes.OK, result, "User found successfully");
   }
 }

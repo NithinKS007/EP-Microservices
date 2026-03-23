@@ -1,0 +1,19 @@
+model RefreshToken {
+    id        String   @id @default(uuid()) @db.Uuid
+    userId    String   @map("fk_user_id") @db.Uuid
+    tokenHash String   @unique @map("token_hash")
+    expiresAt DateTime @map("expires_at")
+
+    revoked Boolean @default(false)
+
+    userAgent String? @map("user_agent")
+    ipAddress String? @map("ip_address")
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@index([userId])
+    @@index([expiresAt])
+    @@index([userId, revoked])
+    @@map("refreshTokens")
+}

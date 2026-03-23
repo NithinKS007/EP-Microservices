@@ -15,19 +15,9 @@ services:
     image: postgres:15
     restart: always
     env_file:
-      - ./.env.postgres
+      - ./.env
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - backend
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    restart: always
-    hostname: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
     networks:
       - backend
 
@@ -35,34 +25,35 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
     restart: always
-    depends_on:
-      - zookeeper
     environment:
-      KAFKA_BROKER_ID: 1
-
-      # Zookeeper
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-
-      # Listeners (Docker-internal)
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
-      # Single-node safe defaults
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
 
-      # Stability
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    command: >
+      bash -c "
+      if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+        kafka-storage format -t $CLUSTER_ID -c /etc/kafka/kafka.properties;
+      fi &&
+      /etc/confluent/docker/run"
 
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
       interval: 10s
       timeout: 10s
       retries: 10
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     networks:
       - backend
 
@@ -101,8 +92,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started
+      redis:
+        condition: service_started
     networks:
       - backend
 
@@ -118,8 +109,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started        
+      redis:
+        condition: service_started        
     networks:
       - backend
   
@@ -135,8 +126,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started        
+      redis:
+        condition: service_started        
     networks:
       - backend
 
@@ -152,8 +143,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started
+      redis:
+        condition: service_started
     networks:
       - backend
     
@@ -169,8 +160,8 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started
+      redis:
+        condition: service_started
     networks:
       - backend
       
@@ -186,14 +177,15 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
-      # redis:
-      #   condition: service_started
+      redis:
+        condition: service_started
     networks:
       - backend
 
 volumes:
   pgdata:
   redis_data:
+  kafka_data:
 
 networks:
   backend:

@@ -1,4 +1,4 @@
-import { EmailService, KafkaService, logger } from "../../../utils/src";
+import { KafkaService, logger } from "../../../utils/src";
 import { PaymentRepository } from "../repositories/payment.repository";
 
 interface PaymentFailedMessage {
@@ -20,7 +20,6 @@ export class PaymentFailedConsumer {
   }: {
     kafkaService: KafkaService;
     paymentRepository: PaymentRepository;
-    emailService: EmailService;
   }) {
     this.kafkaService = kafkaService;
     this.paymentRepository = paymentRepository;

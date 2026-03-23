@@ -5,24 +5,51 @@ package user.v1;
 import "google/protobuf/timestamp.proto";
 
 service UserService {
-  rpc SignupUser(SignupUserRequest) returns (SignupUserResponse);
-  rpc SigninUser(SigninUserRequest) returns (SigninUserResponse);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc FindUserByEmail(FindUserByEmailRequest) returns (FindUserByEmailResponse);
+  rpc UpdateUserPassword(UpdateUserPasswordRequest) returns (UpdateUserPasswordResponse);
+  rpc FindUserById(FindUserByIdRequest) returns (FindUserByIdResponse);
 }
 
-message SignupUserRequest {
+message FindUserByIdRequest {
+  string user_id = 1;
+}
+
+message FindUserByIdResponse {
+  bool success = 1;
+  string message = 2;
+  optional User user = 3;
+}
+
+message UpdateUserPasswordRequest {
+  string user_id = 1;
+  string password = 2;
+}
+
+message UpdateUserPasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CreateUserRequest {
   string name = 1;
   string email = 2;
   string password = 3;
 }
 
-message SignupUserResponse {
+message CreateUserResponse {
   bool success = 1;
   string message = 2;
 }
 
-message SigninUserRequest {
+message FindUserByEmailRequest {
   string email = 1;
-  string password = 2;
+}
+
+message FindUserByEmailResponse {
+  bool success = 1;
+  string message = 2;
+  optional User user = 3;
 }
 
 enum Role {
@@ -35,13 +62,8 @@ message User {
   string id = 1;
   string name = 2;
   string email = 3;
-  optional Role role = 4;
-  optional google.protobuf.Timestamp created_at = 5;
-  optional google.protobuf.Timestamp updated_at = 6;
-}
-
-message SigninUserResponse {
-  bool success = 1;
-  string message = 2;
-  User user = 3;
+  Role role = 4;
+  string password = 5;
+  optional google.protobuf.Timestamp created_at = 6;
+  optional google.protobuf.Timestamp updated_at = 7;
 }

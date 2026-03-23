@@ -27,7 +27,13 @@ class ServiceProxy {
       name: "auth-service",
       path: "/auth-service",
       url: envConfig.AUTH_SERVICE_URL,
-      publicRoutes: ["/api/v1/auth/sign-in", "/api/v1/auth/signup", "/health"],
+      publicRoutes: [
+        "/api/v1/auth/sign-in",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/password-reset",
+        "/api/v1/auth/password-reset/:token",
+        "/health",
+      ],
     },
     {
       name: "user-service",
@@ -52,7 +58,7 @@ class ServiceProxy {
       path: "/payment-service",
       url: envConfig.PAYMENT_SERVICE_URL,
       publicRoutes: ["/health"],
-    }
+    },
   ];
 
   /**

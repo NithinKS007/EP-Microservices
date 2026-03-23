@@ -1,9 +1,14 @@
 import { createContainer, asClass } from "awilix";
 import { AuthController } from "./controllers/auth.controller";
 import { AuthService } from "./services/auth.service";
-import { KafkaService, JwtService } from "../../utils/src";
+import { KafkaService, JwtService, TokenService, CronRunner, EmailService } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 import { UserServiceGrpcClient } from "./grpc/user.client";
+import { RefreshTokenRepository } from "./repositories/refresh.token.repository";
+import { TokenCleanupJob } from "./utils/cronjob";
+import { PasswordController } from "./controllers/password.controller";
+import { PasswordService } from "./services/password.service";
+import { PasswordResetTokenRepository } from "repositories/password.token.repository";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -17,7 +22,10 @@ const refreshExpiration = envConfig.JWT_REFRESH_TOKEN_EXPIRATION;
 
 container.register({
   authService: asClass(AuthService).scoped(),
+  passwordService: asClass(PasswordService).scoped(),
   authController: asClass(AuthController).scoped(),
+  passwordController: asClass(PasswordController).scoped(),
+
   kafkaService: asClass(KafkaService)
     .scoped()
     .inject(() => ({
@@ -34,6 +42,12 @@ container.register({
       refreshExpiration,
     })),
   userServiceGrpcClient: asClass(UserServiceGrpcClient).scoped(),
+  refreshTokenRepository: asClass(RefreshTokenRepository).scoped(),
+  passwordResetTokenRepository: asClass(PasswordResetTokenRepository).scoped(),
+  tokenService: asClass(TokenService).scoped(),
+  cronRunner: asClass(CronRunner).scoped(),
+  tokenCleanupJob: asClass(TokenCleanupJob).scoped(),
+  emailService: asClass(EmailService).scoped(),
 });
 
 export { container };

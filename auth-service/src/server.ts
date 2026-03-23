@@ -1,8 +1,9 @@
-import "reflect-metadata"; 
+import "reflect-metadata";
 import { container } from "./container";
 import { KafkaService, logger } from "../../utils/src";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";
+import { TokenCleanupJob } from "./utils/cronjob";
 
 /**
  * Gracefully shuts down the server upon receiving termination signals.
@@ -49,12 +50,15 @@ const startServer = async () => {
 
     /** Connect producer and consumer */
 
-    const kafkaService = container.resolve<KafkaService>('kafkaService');
+    const kafkaService = container.resolve<KafkaService>("kafkaService");
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
     }
+
+    const tokenCleanupJob = container.resolve<TokenCleanupJob>("tokenCleanupJob");
+    tokenCleanupJob.start();
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${envConfig.PORT} is already in use`);
@@ -73,4 +77,4 @@ const startServer = async () => {
   }
 };
 
- startServer();
+startServer();

@@ -12,15 +12,19 @@ export { JwtService } from "./jwt.service";
 export { createGrpcClient } from "./grpc/grpc.client";
 export { startGrpcServer, GrpcHandler, GrpcServiceDef } from "./grpc/grpc.server";
 export {
-  SigninUserRequest,
-  SigninUserResponse,
-  SignupUserRequest,
-  SignupUserResponse,
+  CreateUserRequest,
+  CreateUserResponse,
+  FindUserByEmailRequest,
+  FindUserByEmailResponse,
+  UpdateUserPasswordRequest,
+  UpdateUserPasswordResponse,
+  FindUserByIdRequest,
+  FindUserByIdResponse,
   UserServiceClient,
   UserServiceServer,
   UserServiceService,
   Role,
-} from "./grpc/generated/user";
+} from "./grpc/generated/user/v1/user";
 
 export {
   FindBookingRequest,
@@ -33,7 +37,7 @@ export {
   BookingServiceServer,
   BookingServiceService,
   BookingStatus,
-} from "./grpc/generated/booking";
+} from "./grpc/generated/booking/v1/booking";
 
 export {
   LockSeatsRequest,
@@ -45,7 +49,7 @@ export {
   EventServiceClient,
   EventServiceServer,
   EventServiceService,
-} from "./grpc/generated/event";
+} from "./grpc/generated/event/v1/event";
 
 export {
   CreatePaymentRequest,
@@ -53,7 +57,7 @@ export {
   PaymentServiceClient,
   PaymentServiceServer,
   PaymentServiceService,
-} from "./grpc/generated/payment";
+} from "./grpc/generated/payment/v1/payment";
 
 export { SendUnaryData, ServerUnaryCall } from "./grpc/types";
 export { toGrpcError, fromGrpcError } from "./grpc/grpc.error.mapper";
@@ -62,3 +66,4 @@ export { validateDto } from "./validate.dtos";
 export { EmailService } from "./email.service";
 export { TokenService } from "./token.service";
 export { AuthReq, AuthMiddleware } from "./auth.middleware";
+export { CronRunner } from "./cron.job";
