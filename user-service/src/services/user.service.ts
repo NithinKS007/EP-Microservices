@@ -56,4 +56,9 @@ export class UserService {
     if (!userId || !password) throw new ValidationError("User id and password are required");
     await this.userRepository.update({ id: userId }, { password });
   }
+
+  async updateUser(id: string, name: string): Promise<void> {
+    if (!id || !name) throw new ValidationError("User id and name are required");
+    await this.userRepository.update({ id }, { name });
+  }
 }

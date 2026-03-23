@@ -5,3 +5,12 @@ export class FindUserByIdRequestDto {
   @IsNotEmpty()
   id!: string;
 }
+
+export class UpdateUserRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
+
+  @IsString()
+  name!: string;
+}
