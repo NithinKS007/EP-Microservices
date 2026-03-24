@@ -19,7 +19,6 @@ export type PaymentEventCreateData = {
 // export type PaymentEventCreateData = Prisma.PaymentEventCreateInput;
 export type PaymentEventUpdateData = Prisma.PaymentEventUpdateInput;
 export type PaymentEventWhere = Prisma.PaymentEventWhereInput;
-export type PaymentEventFindManyArgs = Prisma.PaymentEventFindManyArgs;
 
 /**
  * PaymentEvent Repository contract
@@ -29,6 +28,5 @@ export interface IPaymentEventRepository extends DatabaseAdapter<
   PaymentEventModel,
   PaymentEventCreateData,
   PaymentEventUpdateData,
-  PaymentEventWhere,
-  PaymentEventFindManyArgs
+  PaymentEventWhere
 > {}

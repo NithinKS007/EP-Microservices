@@ -12,7 +12,6 @@ export type BookingModel = Prisma.BookingGetPayload<{}>;
 export type BookingCreateData = Prisma.BookingCreateInput;
 export type BookingUpdateData = Prisma.BookingUpdateInput;
 export type BookingWhere = Prisma.BookingWhereInput;
-export type BookingFindManyArgs = Prisma.BookingFindManyArgs;
 
 /**
  * Booking Repository contract
@@ -22,6 +21,5 @@ export interface IBookingRepository extends DatabaseAdapter<
   BookingModel,
   BookingCreateData,
   BookingUpdateData,
-  BookingWhere,
-  BookingFindManyArgs
+  BookingWhere
 > {}

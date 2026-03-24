@@ -64,12 +64,12 @@ services:
         condition: service_started
       user:
         condition: service_started
-      event:
-        condition: service_started
-      booking:
-        condition: service_started
-      payment:
-        condition: service_started
+      # event:
+      #   condition: service_started
+      # booking:
+      #   condition: service_started
+      # payment:
+      #   condition: service_started
     networks:
       - backend
       

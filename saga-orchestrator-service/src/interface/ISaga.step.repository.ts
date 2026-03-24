@@ -12,7 +12,6 @@ export type SagaStepModel = Prisma.SagaStepGetPayload<{}>;
 export type SagaStepCreateData = Prisma.SagaStepCreateInput;
 export type SagaStepUpdateData = Prisma.SagaStepUpdateInput;
 export type SagaStepWhere = Prisma.SagaStepWhereInput;
-export type SagaStepFindManyArgs = Prisma.SagaStepFindManyArgs;
 
 /**
  * SagaStep Repository contract
@@ -22,6 +21,5 @@ export interface ISagaStepRepository extends DatabaseAdapter<
   SagaStepModel,
   SagaStepCreateData,
   SagaStepUpdateData,
-  SagaStepWhere,
-  SagaStepFindManyArgs
+  SagaStepWhere
 > {}

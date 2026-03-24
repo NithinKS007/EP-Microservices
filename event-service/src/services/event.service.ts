@@ -75,10 +75,7 @@ export class EventService {
     if (!event) {
       throw new NotFoundError("Event not found, Please try again later");
     }
-    const soldSeats = await this.seatRepository.count({
-      eventId: id,
-      seatStatus: "SOLD",
-    });
+    const soldSeats = await this.seatRepository.countSoldSeats(id);
     if (soldSeats > 0) {
       throw new ConflictError("Event with sold seats cannot be deleted. Cancel it instead.");
     }

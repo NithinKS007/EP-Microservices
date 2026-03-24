@@ -7,10 +7,9 @@ type TModel = Prisma.OutboxEventGetPayload<Prisma.OutboxEventFindUniqueArgs>;
 type TCreate = Prisma.OutboxEventCreateArgs["data"];
 type TUpdate = Prisma.OutboxEventUpdateArgs["data"];
 type TWhere = Prisma.OutboxEventWhereInput;
-type TFindManyArgs = Prisma.OutboxEventFindManyArgs;
 
 export class OutboxEventRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements IOutboxEventRepository
 {
   private readonly prisma: PrismaClient | Prisma.TransactionClient;
@@ -37,6 +36,6 @@ export class OutboxEventRepository
   }
 
   async updateMany(ids: string[], data: TUpdate): Promise<void> {
-    await this.adapter.updateMany({ id: { in: ids } }, data);
+    await this.prisma.outboxEvent.updateMany({ where: { id: { in: ids } }, data });
   }
 }

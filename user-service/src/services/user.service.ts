@@ -48,7 +48,7 @@ export class UserService {
     const { email } = data;
     if (!email) throw new ValidationError("Email is required");
     logger.info(`Finding user by email ${email}`);
-    const user = await this.userRepository.findOne({ email });
+    const user = await this.userRepository.findByEmail(email);
     return user ? user : undefined;
   }
 

@@ -12,7 +12,6 @@ export type SagaModel = Prisma.SagaGetPayload<{}>;
 export type SagaCreateData = Prisma.SagaCreateInput;
 export type SagaUpdateData = Prisma.SagaUpdateInput;
 export type SagaWhere = Prisma.SagaWhereInput;
-export type SagaFindManyArgs = Prisma.SagaFindManyArgs;
 
 /**
  * Saga Repository contract
@@ -22,6 +21,5 @@ export interface ISagaRepository extends DatabaseAdapter<
   SagaModel,
   SagaCreateData,
   SagaUpdateData,
-  SagaWhere,
-  SagaFindManyArgs
+  SagaWhere
 > {}

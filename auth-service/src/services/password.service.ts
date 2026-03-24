@@ -66,7 +66,7 @@ export class PasswordService {
     if (!token || !password) throw new ValidationError("Token and password are required");
 
     const hashedToken = this.tokenService.hashAuthToken(token);
-    const tokenData = await this.passwordResetTokenRepository.findOne({ tokenHash: hashedToken });
+    const tokenData = await this.passwordResetTokenRepository.findByTokenHash(hashedToken);
     if (!tokenData) throw new NotFoundError("Link is invalid, Please try again later");
 
     if (tokenData.expiresAt < new Date())

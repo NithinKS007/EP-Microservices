@@ -7,10 +7,9 @@ type TModel = Prisma.SagaGetPayload<Prisma.SagaFindUniqueArgs>;
 type TCreate = Prisma.SagaCreateArgs["data"];
 type TUpdate = Prisma.SagaUpdateArgs["data"];
 type TWhere = Prisma.SagaWhereInput;
-type TFindManyArgs = Prisma.SagaFindManyArgs;
 
 export class SagaRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements ISagaRepository
 {
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {

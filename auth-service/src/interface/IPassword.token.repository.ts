@@ -12,7 +12,6 @@ export type PasswordResetTokenModel = Prisma.PasswordResetTokenGetPayload<{}>;
 export type PasswordResetTokenCreateData = Prisma.PasswordResetTokenCreateInput;
 export type PasswordResetTokenUpdateData = Prisma.PasswordResetTokenUpdateInput;
 export type PasswordResetTokenWhere = Prisma.PasswordResetTokenWhereInput;
-export type PasswordResetTokenFindManyArgs = Prisma.PasswordResetTokenFindManyArgs;
 
 /**
  * PasswordResetToken Repository contract
@@ -22,6 +21,7 @@ export interface IPasswordResetTokenRepository extends DatabaseAdapter<
   PasswordResetTokenModel,
   PasswordResetTokenCreateData,
   PasswordResetTokenUpdateData,
-  PasswordResetTokenWhere,
-  PasswordResetTokenFindManyArgs
-> {}
+  PasswordResetTokenWhere
+> {
+  findByTokenHash(tokenHash: string): Promise<PasswordResetTokenModel | null>;
+}

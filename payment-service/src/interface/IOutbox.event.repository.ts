@@ -12,7 +12,6 @@ export type OutboxEventModel = Prisma.OutboxEventGetPayload<{}>;
 export type OutboxEventCreateData = Prisma.OutboxEventCreateInput;
 export type OutboxEventUpdateData = Prisma.OutboxEventUpdateInput;
 export type OutboxEventWhere = Prisma.OutboxEventWhereInput;
-export type OutboxEventFindManyArgs = Prisma.OutboxEventFindManyArgs;
 
 /**
  * OutboxEvent Repository contract
@@ -22,8 +21,7 @@ export interface IOutboxEventRepository extends DatabaseAdapter<
   OutboxEventModel,
   OutboxEventCreateData,
   OutboxEventUpdateData,
-  OutboxEventWhere,
-  OutboxEventFindManyArgs
+  OutboxEventWhere
 > {
   fetchBatch(limit: number): Promise<OutboxEventModel[]>;
   updateMany(ids: string[], data: OutboxEventUpdateData): Promise<void>;

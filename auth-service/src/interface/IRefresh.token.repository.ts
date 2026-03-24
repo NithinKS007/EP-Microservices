@@ -12,7 +12,6 @@ export type RefreshTokenModel = Prisma.RefreshTokenGetPayload<{}>;
 export type RefreshTokenCreateData = Prisma.RefreshTokenCreateInput;
 export type RefreshTokenUpdateData = Prisma.RefreshTokenUpdateInput;
 export type RefreshTokenWhere = Prisma.RefreshTokenWhereInput;
-export type RefreshTokenFindManyArgs = Prisma.RefreshTokenFindManyArgs;
 
 /**
  * RefreshToken Repository contract
@@ -22,9 +21,10 @@ export interface IRefreshTokenRepository extends DatabaseAdapter<
   RefreshTokenModel,
   RefreshTokenCreateData,
   RefreshTokenUpdateData,
-  RefreshTokenWhere,
-  RefreshTokenFindManyArgs
+  RefreshTokenWhere
 > {
   revokeAllByUserId(userId: string): Promise<void>;
   deleteOldTokens(userId: string, maxSessions: number): Promise<void>;
+  findByTokenHash(tokenHash: string): Promise<RefreshTokenModel | null>;
+  deleteExpiredTokens(): Promise<void>;
 }

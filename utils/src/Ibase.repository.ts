@@ -8,18 +8,11 @@ import { Model, FilterQuery, UpdateQuery } from "mongoose";
  * TWhere: The type for query filters
  */
 
-export interface DatabaseAdapter<TModel, TCreate, TUpdate, TWhere, TFindManyArgs> {
+export interface DatabaseAdapter<TModel, TCreate, TUpdate, TWhere> {
   create(data: TCreate): Promise<TModel>;
-
   findById(id: string): Promise<TModel | null>;
-  findOne(where: TWhere): Promise<TModel | null>;
-  findMany(args?: TFindManyArgs): Promise<TModel[]>;
-
   update(where: TWhere, data: TUpdate): Promise<TModel | null>;
   delete(where: TWhere): Promise<TModel | null>;
-  deleteMany(where: TWhere): Promise<unknown>;
-
-  count(where: TWhere): Promise<number>;
 }
 
 /**
@@ -28,24 +21,18 @@ export interface DatabaseAdapter<TModel, TCreate, TUpdate, TWhere, TFindManyArgs
  * Provides error-safe update/delete (returns null if fails) to prevent runtime crashes.
  */
 
-export class PrismaAdapter<
+export class PrismaAdapter<TModel, TCreate, TUpdate, TWhere> implements DatabaseAdapter<
   TModel,
   TCreate,
   TUpdate,
-  TWhere,
-  TFindManyArgs,
-> implements DatabaseAdapter<TModel, TCreate, TUpdate, TWhere, TFindManyArgs> {
+  TWhere
+> {
   constructor(
     private readonly delegate: {
       create(args: { data: TCreate }): Promise<TModel>;
       findUnique(args: { where: { id: string } }): Promise<TModel | null>;
-      findFirst(args: { where: TWhere }): Promise<TModel | null>;
-      findMany(args?: TFindManyArgs): Promise<TModel[]>;
       update(args: { where: TWhere; data: TUpdate }): Promise<TModel>;
       delete(args: { where: TWhere }): Promise<TModel>;
-      deleteMany(args: { where: TWhere }): Promise<unknown>;
-      count(args: { where: TWhere }): Promise<number>;
-      updateMany(args: { where: TWhere; data: TUpdate }): Promise<unknown>;
     },
   ) {}
 
@@ -55,22 +42,6 @@ export class PrismaAdapter<
 
   async findById(id: string) {
     return await this.delegate.findUnique({ where: { id } });
-  }
-
-  async findOne(where: TWhere) {
-    return await this.delegate.findFirst({ where });
-  }
-
-  async findMany(args?: TFindManyArgs) {
-    return this.delegate.findMany(args);
-  }
-
-  async updateMany(where: TWhere, data: TUpdate) {
-    try {
-      return await this.delegate.updateMany({ where, data });
-    } catch {
-      return null;
-    }
   }
 
   async update(where: TWhere, data: TUpdate) {
@@ -87,14 +58,6 @@ export class PrismaAdapter<
     } catch {
       return null;
     }
-  }
-
-  async deleteMany(where: TWhere) {
-    return await this.delegate.deleteMany({ where });
-  }
-
-  async count(where: TWhere) {
-    return await this.delegate.count({ where });
   }
 }
 
@@ -116,7 +79,7 @@ export class MongooseAdapter<
   TCreate,
   TUpdate extends UpdateQuery<TModel>,
   TWhere extends FilterQuery<TModel>,
-> implements DatabaseAdapter<TModel, TCreate, TUpdate, TWhere, MongooseFindManyArgs<TWhere>> {
+> implements DatabaseAdapter<TModel, TCreate, TUpdate, TWhere> {
   constructor(private readonly model: Model<TModel>) {}
 
   async create(data: TCreate): Promise<TModel> {
@@ -127,33 +90,11 @@ export class MongooseAdapter<
     return await this.model.findById(id);
   }
 
-  async findOne(where: TWhere): Promise<TModel | null> {
-    return await this.model.findOne(where);
-  }
-
-  async findMany(args?: MongooseFindManyArgs<TWhere>) {
-    const query = this.model.find(args?.where ?? {});
-
-    if (args?.skip) query.skip(args.skip);
-    if (args?.limit) query.limit(args.limit);
-    if (args?.sort) query.sort(args.sort);
-
-    return await query.exec();
-  }
-
   async update(where: TWhere, data: TUpdate) {
     return this.model.findOneAndUpdate(where, data, { new: true }).exec();
   }
 
   async delete(where: TWhere) {
     return this.model.findOneAndDelete(where).exec();
-  }
-
-  async deleteMany(where: TWhere): Promise<unknown> {
-    return await this.model.deleteMany(where).exec();
-  }
-
-  async count(where: TWhere): Promise<number> {
-    return await this.model.countDocuments(where).exec();
   }
 }

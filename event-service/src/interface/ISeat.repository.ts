@@ -13,7 +13,6 @@ export type SeatModel = Prisma.SeatGetPayload<{}>;
 export type SeatCreateData = Prisma.SeatCreateInput;
 export type SeatUpdateData = Prisma.SeatUpdateInput;
 export type SeatWhere = Prisma.SeatWhereInput;
-export type SeatFindManyArgs = Prisma.SeatFindManyArgs;
 
 /**
  * Seat Repository contract
@@ -22,8 +21,7 @@ export interface ISeatRepository extends DatabaseAdapter<
   SeatModel,
   SeatCreateData,
   SeatUpdateData,
-  SeatWhere,
-  SeatFindManyArgs
+  SeatWhere
 > {
   /**
    * Bulk create seats for an event
@@ -83,4 +81,14 @@ export interface ISeatRepository extends DatabaseAdapter<
    * @returns void
    * */
   releaseSeats(bookingId: string): Promise<void>;
+
+  /**
+   * Count sold seats
+   *
+   * @param eventId - Event ID
+   * @returns number
+   * */
+  countSoldSeats(eventId: string): Promise<number>;
+
+  findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]>;
 }

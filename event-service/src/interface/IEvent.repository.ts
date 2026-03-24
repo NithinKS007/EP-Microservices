@@ -12,7 +12,6 @@ export type EventModel = Prisma.EventGetPayload<{}>;
 export type EventCreateData = Prisma.EventCreateInput;
 export type EventUpdateData = Prisma.EventUpdateInput;
 export type EventWhere = Prisma.EventWhereInput;
-export type EventFindManyArgs = Prisma.EventFindManyArgs;
 
 /**
  * Event Repository contract
@@ -21,8 +20,7 @@ export interface IEventRepository extends DatabaseAdapter<
   EventModel,
   EventCreateData,
   EventUpdateData,
-  EventWhere,
-  EventFindManyArgs
+  EventWhere
 > {
   /**
    * Find an event by date, venue name and name

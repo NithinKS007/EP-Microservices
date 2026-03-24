@@ -18,9 +18,7 @@ export class TokenCleanupJob {
 
   start() {
     this.cronRunner.schedule("Refresh Token Cleanup", "0 * * * *", async () => {
-      await this.refreshTokenRepository.deleteMany({
-        expiresAt: { lt: new Date() },
-      });
+      await this.refreshTokenRepository.deleteExpiredTokens();
     });
   }
 }

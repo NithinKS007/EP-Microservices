@@ -7,10 +7,9 @@ type TModel = Prisma.BookingSeatGetPayload<Prisma.BookingSeatFindUniqueArgs>;
 type TCreate = Prisma.BookingSeatCreateArgs["data"];
 type TUpdate = Prisma.BookingSeatUpdateArgs["data"];
 type TWhere = Prisma.BookingSeatWhereInput;
-type TFindManyArgs = Prisma.BookingSeatFindManyArgs;
 
 export class BookingSeatRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements IBookingSeatRepository
 {
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {

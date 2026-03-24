@@ -8,10 +8,9 @@ type TModel = Prisma.SeatGetPayload<Prisma.SeatFindUniqueArgs>;
 type TCreate = Prisma.SeatCreateArgs["data"];
 type TUpdate = Prisma.SeatUpdateArgs["data"];
 type TWhere = Prisma.SeatWhereInput;
-type TFindManyArgs = Prisma.SeatFindManyArgs;
 
 export class SeatRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements ISeatRepository
 {
   private prisma: PrismaClient | Prisma.TransactionClient;
@@ -44,12 +43,12 @@ export class SeatRepository
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.findMany({
+      this.prisma.seat.findMany({
         skip,
         take: limit,
         where: { eventId, seatStatus, seatTier },
       }),
-      this.count({ eventId, seatStatus, seatTier }),
+      this.prisma.seat.count({ where: { eventId, seatStatus, seatTier } }),
     ]);
 
     return { data, meta: { total, page, limit } };
@@ -93,6 +92,22 @@ export class SeatRepository
         lockedByBookingId: null,
         lockExpiresAt: null,
       },
+    });
+  }
+
+  async countSoldSeats(eventId: string): Promise<number> {
+    return await this.prisma.seat.count({
+      where: { eventId, seatStatus: "SOLD" },
+    });
+  }
+
+  async findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]> {
+    return await this.prisma.seat.findMany({
+      where: {
+        id: { in: seatIds },
+        eventId: eventId,
+        seatStatus: { not: "AVAILABLE" },
+      }
     });
   }
 }

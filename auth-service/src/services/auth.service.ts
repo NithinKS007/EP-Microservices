@@ -121,7 +121,7 @@ export class AuthService {
     const payload = await this.jwtService.verifyRT(incomingToken);
 
     const hashed = this.tokenService.hashAuthToken(incomingToken);
-    const token = await this.refreshTokenRepository.findOne({ tokenHash: hashed });
+    const token = await this.refreshTokenRepository.findByTokenHash(hashed);
     if (!token) throw new ValidationError("Refresh token is invalid, Please try again later");
 
     if (token.userAgent !== incomingUserAgent || token.ipAddress !== incomingIp) {
@@ -168,9 +168,7 @@ export class AuthService {
     const payload = await this.jwtService.verifyRT(refreshToken);
 
     const hashed = this.tokenService.hashAuthToken(refreshToken);
-    const token = await this.refreshTokenRepository.findOne({
-      tokenHash: hashed,
-    });
+    const token = await this.refreshTokenRepository.findByTokenHash(hashed);
 
     if (!token) return;
 

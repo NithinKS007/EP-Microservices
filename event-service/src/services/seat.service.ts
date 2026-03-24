@@ -105,14 +105,7 @@ export class SeatService {
       throw new ValidationError("Event is not active, Please try again later");
     }
 
-    const notAvailable = await this.seatRepository.findMany({
-      where: {
-        id: { in: seatIds },
-        eventId: eventId,
-        seatStatus: { not: "AVAILABLE" },
-      },
-      select: { id: true },
-    });
+    const notAvailable = await this.seatRepository.findNotAvailableSeats(seatIds, eventId);
 
     if (notAvailable.length > 0) {
       const seats = notAvailable.map((s) => `${s.seatNumber} (${s.seatTier})`).join(", ");

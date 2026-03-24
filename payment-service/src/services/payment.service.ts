@@ -63,9 +63,7 @@ export class PaymentService {
     order_id: string;
     method: string;
   }) {
-    const existing = await this.paymentRepository.findOne({
-      providerRef: payload.order_id,
-    });
+    const existing = await this.paymentRepository.findByOrderId(payload.order_id);
 
     if (!existing) {
       logger.warn(`Payment orphaned ORDER_ID ${payload.order_id} PAYLOAD`);
@@ -122,10 +120,7 @@ export class PaymentService {
     order_id: string;
     method: string;
   }) {
-    const existing = await this.paymentRepository.findOne({
-      providerRef: payload.order_id,
-    });
-
+    const existing = await this.paymentRepository.findByOrderId(payload.order_id);
     if (!existing) {
       logger.warn(`Payment not found ORDER_ID ${payload.order_id} PAYLOAD`);
       return;

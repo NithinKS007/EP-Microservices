@@ -7,10 +7,9 @@ type TModel = Prisma.PaymentEventGetPayload<Prisma.PaymentEventFindUniqueArgs>;
 type TCreate = Prisma.PaymentEventCreateArgs["data"];
 type TUpdate = Prisma.PaymentEventUpdateArgs["data"];
 type TWhere = Prisma.PaymentEventWhereInput;
-type TFindManyArgs = Prisma.PaymentEventFindManyArgs;
 
 export class PaymentEventRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements IPaymentEventRepository
 {
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {

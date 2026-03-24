@@ -12,7 +12,6 @@ export type PaymentModel = Prisma.PaymentGetPayload<{}>;
 export type PaymentCreateData = Prisma.PaymentCreateInput;
 export type PaymentUpdateData = Prisma.PaymentUpdateInput;
 export type PaymentWhere = Prisma.PaymentWhereInput;
-export type PaymentFindManyArgs = Prisma.PaymentFindManyArgs;
 
 /**
  * Payment Repository contract
@@ -22,9 +21,9 @@ export interface IPaymentRepository extends DatabaseAdapter<
   PaymentModel,
   PaymentCreateData,
   PaymentUpdateData,
-  PaymentWhere,
-  PaymentFindManyArgs
+  PaymentWhere
 > {
   updateManyPaymentsNotSuccess(paymentId: string): Promise<Prisma.BatchPayload>;
   updateManyPaymentsNotFailed(paymentId: string): Promise<Prisma.BatchPayload>;
+  findByOrderId(orderId: string): Promise<PaymentModel | null>;
 }
