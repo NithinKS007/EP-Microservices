@@ -2,10 +2,10 @@ import { ValidationError } from "../../../utils/src/error.handling.middleware";
 import { IPaymentRepository } from "../interface/IPayment.repository";
 import { IPaymentEventRepository } from "../interface/IPayment.event.repository";
 import { codeGenerator, KafkaService, logger } from "../../../utils/src/index";
-import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "./../dtos/payment..dtos";
+import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
-import { UnitOfWork } from "./../repositories/unity.of.work";
+import { UnitOfWork } from "../repositories/unity.of.work";
 
 export class PaymentService {
   private readonly paymentRepository: IPaymentRepository;

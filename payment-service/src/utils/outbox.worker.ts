@@ -1,4 +1,4 @@
-import { IOutboxEventRepository } from "./../interface/IOutbox.event.repository";
+import { IOutboxEventRepository } from "../interface/IOutbox.event.repository";
 import { KafkaService, logger } from "../../../utils/src";
 import { OutboxEvent } from "../entity/outbox.event.entity";
 

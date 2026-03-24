@@ -1,6 +1,6 @@
 import { AwilixContainer } from "awilix";
-import { Prisma, PrismaClient } from "./../generated/prisma/client";
-import { container } from "./../container";
+import { Prisma, PrismaClient } from "../generated/prisma/client";
+import { container } from "../container";
 import { PaymentRepository } from "./payment.repository";
 import { PaymentEventRepository } from "./payment.event.repository";
 import { OutboxEventRepository } from "./outbox.event.repository";

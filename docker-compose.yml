@@ -38,14 +38,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-
-    command: >
-      bash -c "
-      if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-        kafka-storage format -t $CLUSTER_ID -c /etc/kafka/kafka.properties;
-      fi &&
-      /etc/confluent/docker/run"
+      CLUSTER_ID: 'icwm1FTEQfip7aHDNLx-Qg'
 
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
@@ -151,10 +144,10 @@ services:
   payment:
     build:
       context: .
-      dockerfile: ./paymentService/Dockerfile
+      dockerfile: ./payment-service/Dockerfile
     restart: always      
     env_file:
-      - ./paymentService/.env
+      - ./payment-service/.env
     depends_on:
       postgres:
         condition: service_started
