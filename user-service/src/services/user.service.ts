@@ -1,6 +1,7 @@
 import { UserEntity } from "../entity/user.entity";
 import { NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
 import { IUserRepository } from "../interface/IUser.repository";
+import { logger } from "../../../utils/src";
 
 export class UserService {
   private readonly userRepository: IUserRepository;
@@ -46,6 +47,7 @@ export class UserService {
   async findUserByEmail(data: { email: string }): Promise<UserEntity | undefined> {
     const { email } = data;
     if (!email) throw new ValidationError("Email is required");
+    logger.info(`Finding user by email ${email}`);
     const user = await this.userRepository.findOne({ email });
     return user ? user : undefined;
   }

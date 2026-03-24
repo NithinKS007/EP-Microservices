@@ -1,7 +1,7 @@
 import { UserServiceGrpcClient } from "./../grpc/user.client";
 import { NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
 import { comparePassword, EmailService, hashPassword, TokenService } from "../../../utils/src";
-import { envConfig } from "config/env.config";
+import { envConfig } from "./../config/env.config";
 import { IPasswordResetTokenRepository } from "./../interface/IPassword.token.repository";
 
 export class PasswordService {
@@ -14,17 +14,17 @@ export class PasswordService {
     userServiceGrpcClient,
     tokenService,
     emailService,
-    passwordResetRepository,
+    passwordResetTokenRepository,
   }: {
     userServiceGrpcClient: UserServiceGrpcClient;
     tokenService: TokenService;
     emailService: EmailService;
-    passwordResetRepository: IPasswordResetTokenRepository;
+    passwordResetTokenRepository: IPasswordResetTokenRepository;
   }) {
     this.userServiceGrpcClient = userServiceGrpcClient;
     this.tokenService = tokenService;
     this.emailService = emailService;
-    this.passwordResetTokenRepository = passwordResetRepository;
+    this.passwordResetTokenRepository = passwordResetTokenRepository;
   }
 
   async sendResetPassLink(data: { email: string }): Promise<void> {
