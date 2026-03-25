@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { AuthReq, JwtService, sendResponse, StatusCodes } from "../../../utils/src";
+import { AuthReq, JwtService, sendResponse, StatusCodes, WithMetaData } from "../../../utils/src";
 import { validateDto } from "../../../utils/src";
 import { AuthService } from "./../services/auth.service";
-import { RefreshTokenRequestDto, SigninRequestDto, SignupRequestDto } from "../dtos/auth.dto";
+import {
+  RefreshTokenRequestDto,
+  SigninRequestDto,
+  SignOutRequestDto,
+  SignupRequestDto,
+} from "../dtos/auth.dto";
 
 export class AuthController {
   private readonly authService: AuthService;
@@ -19,11 +24,11 @@ export class AuthController {
     sendResponse(res, StatusCodes.Created, null, "User created successfully");
   }
 
-  async signin(req: Request, res: Response): Promise<void> {
+  async signin(req: WithMetaData, res: Response): Promise<void> {
     const data = await validateDto(SigninRequestDto, {
       ...req.body,
-      userAgent: req.headers["user-agent"],
-      ip: req.ip,
+      userAgent: req.meta?.userAgent,
+      ip: req.meta?.ip,
     });
     const result = await this.authService.signin(data);
     const { name, accessToken, refreshToken } = result;
@@ -34,8 +39,8 @@ export class AuthController {
   async refreshToken(req: AuthReq, res: Response): Promise<void> {
     const data = await validateDto(RefreshTokenRequestDto, {
       ...req.cookies,
-      userAgent: req.headers["user-agent"],
-      ip: req.ip,
+      userAgent: req.meta?.userAgent,
+      ip: req.meta?.ip,
     });
     const result = await this.authService.refreshToken(data);
     const { accessToken, refreshToken } = result;
@@ -44,7 +49,7 @@ export class AuthController {
   }
 
   async signout(req: AuthReq, res: Response): Promise<void> {
-    const data = await validateDto(RefreshTokenRequestDto,{...req.cookies})
+    const data = await validateDto(SignOutRequestDto, { ...req.cookies });
     await this.authService.signout(data);
     this.jwtService.clearRefreshTokenCookie(res, "DEV");
     sendResponse(res, StatusCodes.OK, null, "Logout successfully");

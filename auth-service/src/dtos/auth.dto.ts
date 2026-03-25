@@ -22,6 +22,10 @@ export class SignupRequestDto {
       "Password is too weak. Must include uppercase, lowercase, number, and special character.",
   })
   password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role!: UserRole;
 }
 
 export class SigninRequestDto {

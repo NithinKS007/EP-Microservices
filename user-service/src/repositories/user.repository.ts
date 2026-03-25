@@ -19,11 +19,6 @@ export class UserRepository
   }
 
   async findByEmail(email: string): Promise<UserModel | null> {
-    console.log("TYPE:", typeof email);
-    console.log("IS STRING");
-    console.log("RAW:", email);
-    console.log("JSON:", JSON.stringify(email));
-
     return await this.prisma.user.findFirst({
       where: { email },
     });

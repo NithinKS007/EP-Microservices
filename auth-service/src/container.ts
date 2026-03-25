@@ -1,7 +1,7 @@
 import { createContainer, asClass, asValue } from "awilix";
 import { AuthController } from "./controllers/auth.controller";
 import { AuthService } from "./services/auth.service";
-import { KafkaService, JwtService, TokenService, CronRunner, EmailService } from "../../utils/src";
+import { KafkaService, JwtService, TokenService, CronRunner, EmailService, CustomMiddleware } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 import { UserServiceGrpcClient } from "./grpc/user.client";
 import { RefreshTokenRepository } from "./repositories/refresh.token.repository";
@@ -61,6 +61,7 @@ container.register({
       emailUser,
       emailPass,
     })),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
 export { container };

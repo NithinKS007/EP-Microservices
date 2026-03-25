@@ -41,17 +41,17 @@ export class AuthService {
     name: string;
     email: string;
     password: string;
-    role?: "ADMIN" | "USER" | undefined;
+    role: "ADMIN" | "USER"
   }): Promise<void> {
     const { email, password, name, role } = data;
-    if (!email || !password || !name) throw new Error("Email,password and name are required");
+    if (!email || !password || !name|| !role) throw new Error("Email,password and name are required");
 
     if (role === "ADMIN") {
       throw new ValidationError("Invalid role, Please try again later");
     }
 
     const userData = await this.userServiceGrpcClient.findUserByEmail({ email });
-    if (userData) throw new ConflictError("Email already exists");
+    if (userData.user) throw new ConflictError("Email already exists");
 
     await this.userServiceGrpcClient.createUser({
       ...data,

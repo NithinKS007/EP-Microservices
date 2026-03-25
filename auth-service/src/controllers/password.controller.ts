@@ -20,7 +20,10 @@ export class PasswordController {
   }
 
   async changePassUsingToken(req: Request, res: Response): Promise<void> {
-    const data = await validateDto(ValidateResetPasswordTokenRequestDto, req.body);
+    const data = await validateDto(ValidateResetPasswordTokenRequestDto, {
+      ...req.body,
+      token: req.params.token,
+    });
     await this.passwordService.changePassUsingToken(data);
     sendResponse(res, StatusCodes.OK, null, "Password changed successfully");
   }

@@ -2,15 +2,15 @@ import { Router } from "express";
 import { container } from "../container";
 import { asyncHandler } from "../../../utils/src";
 import { EventController } from "./../controllers/event.controller";
-import { AuthMiddleware } from "../../../utils/src/auth.middleware";
+import { CustomMiddleware } from "../../../utils/src/auth.middleware";
 
 const router = Router();
 
 const eventController = container.resolve<EventController>("eventController");
-const authMidUtils = container.resolve<AuthMiddleware>("authMidUtils");
+const customMiddleware = container.resolve<CustomMiddleware>("customMiddleware");
 
-router.use(authMidUtils.context.bind(authMidUtils));
-router.use(authMidUtils.authorize(["ADMIN"]));
+router.use(customMiddleware.context.bind(customMiddleware));
+router.use(customMiddleware.requestLogger.bind(customMiddleware));
 
 router.post("/", asyncHandler(eventController.create.bind(eventController)));
 router.get("/", asyncHandler(eventController.findEventsWithPagination.bind(eventController)));

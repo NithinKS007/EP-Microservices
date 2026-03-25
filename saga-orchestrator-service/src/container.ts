@@ -1,6 +1,6 @@
 import { createContainer, asClass } from "awilix";
 import { envConfig } from "./config/env.config";
-import { KafkaService } from "../../utils/src";
+import { CustomMiddleware, KafkaService } from "../../utils/src";
 import { SagaService } from "./services/saga.service";
 import { SagaRepository } from "./repositories/saga.repository";
 import { SagaStepRepository } from "./repositories/saga.step.repository";
@@ -24,6 +24,7 @@ container.register({
   sagaRepository: asClass(SagaRepository).scoped(),
   sagaStepRepository: asClass(SagaStepRepository).scoped(),
   unityOfWork: asClass(UnitOfWork).scoped(),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
 export { container };

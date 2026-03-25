@@ -7,6 +7,7 @@ import { BookingController } from "./controllers/booking.controller";
 import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";
 import { BookingGrpcController } from "./grpc/booking.server";
+import { CustomMiddleware } from "../../utils/src";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -30,9 +31,10 @@ container.register({
       clientId,
       groupId,
     })),
-    
+
   bookingController: asClass(BookingController).scoped(),
   bookingGrpcController: asClass(BookingGrpcController).scoped(),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
 export { container };
