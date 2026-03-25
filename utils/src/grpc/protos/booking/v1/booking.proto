@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package booking.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service BookingService {
+  rpc FindBooking(FindBookingRequest) returns (FindBookingResponse);
+  rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
+  rpc UpdateBookingAmount(UpdateBookingAmountRequest) returns (UpdateBookingAmountResponse);
+}
+
+enum BookingStatus {
+  BOOKING_STATUS_UNSPECIFIED = 0;
+  BOOKING_STATUS_PENDING = 1;
+  BOOKING_STATUS_INITIATED = 2;
+  BOOKING_STATUS_CONFIRMED = 3;
+  BOOKING_STATUS_CANCELLED = 4;
+  BOOKING_STATUS_EXPIRED = 5;
+}
+
+message Booking {
+  string id = 1;
+  string user_id = 2;
+  string event_id = 3;
+  BookingStatus status = 4;
+  double total_amount = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message FindBookingRequest {
+  string booking_id = 1;
+}
+
+message FindBookingResponse {
+  bool success = 1;
+  string message = 2;
+  Booking booking = 3;
+}
+
+message UpdateBookingStatusRequest {
+  string booking_id = 1;
+  BookingStatus status = 2;
+}
+
+message UpdateBookingStatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateBookingAmountRequest {
+  string booking_id = 1;
+  double total_amount = 2;
+}
+
+message UpdateBookingAmountResponse {
+  bool success = 1;
+  string message = 2;
+}

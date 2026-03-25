@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc FindUserByEmail(FindUserByEmailRequest) returns (FindUserByEmailResponse);
+  rpc UpdateUserPassword(UpdateUserPasswordRequest) returns (UpdateUserPasswordResponse);
+  rpc FindUserById(FindUserByIdRequest) returns (FindUserByIdResponse);
+}
+
+message FindUserByIdRequest {
+  string user_id = 1;
+}
+
+message FindUserByIdResponse {
+  bool success = 1;
+  string message = 2;
+  optional User user = 3;
+}
+
+message UpdateUserPasswordRequest {
+  string user_id = 1;
+  string password = 2;
+}
+
+message UpdateUserPasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message CreateUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message FindUserByEmailRequest {
+  string email = 1;
+}
+
+message FindUserByEmailResponse {
+  bool success = 1;
+  string message = 2;
+  optional User user = 3;
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_USER = 1;
+  ROLE_ADMIN = 2;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  Role role = 4;
+  string password = 5;
+  optional google.protobuf.Timestamp created_at = 6;
+  optional google.protobuf.Timestamp updated_at = 7;
+}

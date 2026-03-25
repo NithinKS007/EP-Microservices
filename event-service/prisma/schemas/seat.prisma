@@ -6,8 +6,9 @@ model Seat {
     seatTier   SeatTier
     price      Decimal  @db.Decimal(10, 2)
 
-    seatStatus    SeatStatus @default(available)
-    lockExpiresAt DateTime?  @map("lock_expires_at")
+    seatStatus        SeatStatus @default(AVAILABLE)
+    lockedByBookingId String?    @map("locked_by_booking_id") @db.Uuid
+    lockExpiresAt     DateTime?  @map("lock_expires_at")
 
     event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
@@ -17,21 +18,22 @@ model Seat {
     @@unique([eventId, seatNumber])
     @@index([eventId])
     @@index([seatStatus])
+    @@index([lockedByBookingId])
     @@map("seats")
 }
 
 enum SeatStatus {
-    available
-    locked
-    sold
+    AVAILABLE
+    LOCKED
+    SOLD
 
     @@map("enum_seat_status")
 }
 
 enum SeatTier {
-    vip
-    regular
-    economy
+    VIP
+    REGULAR
+    ECONOMY
 
     @@map("enum_seat_tier")
 }

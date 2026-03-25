@@ -8,7 +8,7 @@ import { SeatService } from "./services/seat.service";
 import { SeatRepository } from "./repositories/seat.repository";
 import { EmailService, TokenService } from "../../utils/src";
 import { UnitOfWork } from "./repositories/unity.of.work";
-import { AuthMiddleware } from "../../utils/src/auth.middleware";
+import { CustomMiddleware } from "../../utils/src/auth.middleware";
 import { SeatController } from "./controllers/seat.controller";
 import { EventService } from "./services/event.service";
 
@@ -41,7 +41,7 @@ container.register({
   seatController: asClass(SeatController).scoped(),
 
   // Utils
-  authMidUtils: asClass(AuthMiddleware).scoped(),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
   kafkaService: asClass(KafkaService)
     .scoped()
     .inject(() => ({

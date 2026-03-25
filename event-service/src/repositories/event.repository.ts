@@ -7,14 +7,15 @@ type TModel = Prisma.EventGetPayload<Prisma.EventFindUniqueArgs>;
 type TCreate = Prisma.EventCreateArgs["data"];
 type TUpdate = Prisma.EventUpdateArgs["data"];
 type TWhere = Prisma.EventWhereInput;
-type TFindManyArgs = Prisma.EventFindManyArgs;
 
 export class EventRepository
-  extends BaseRepository<TModel, TCreate, TUpdate, TWhere, TFindManyArgs>
+  extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements IEventRepository
 {
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.event));
+    this.prisma = prisma;
   }
 
   async findExisting(
@@ -23,15 +24,17 @@ export class EventRepository
     name: string,
     id?: string,
   ): Promise<EventModel | null> {
-    return await this.findOne({
-      eventDate,
-      venueName,
-      name,
-      ...(id && {
-        id: {
-          not: id,
-        },
-      }),
+    return await this.prisma.event.findFirst({
+      where: {
+        eventDate,
+        venueName,
+        name,
+        ...(id && {
+          id: {
+            not: id,
+          },
+        }),
+      },
     });
   }
 
@@ -45,14 +48,14 @@ export class EventRepository
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.findMany({
+      this.prisma.event.findMany({
         skip,
         take: limit,
         orderBy: {
           eventDate: "desc",
         },
       }),
-      this.count({}),
+      this.prisma.event.count({}),
     ]);
 
     return {

@@ -1,8 +1,8 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from "class-validator";
 
 export enum UserRole {
-  ADMIN = "admin",
-  USER = "user",
+  ADMIN = "ADMIN",
+  USER = "USER",
 }
 
 export class SignupRequestDto {
@@ -22,6 +22,10 @@ export class SignupRequestDto {
       "Password is too weak. Must include uppercase, lowercase, number, and special character.",
   })
   password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role!: UserRole;
 }
 
 export class SigninRequestDto {
@@ -35,4 +39,31 @@ export class SigninRequestDto {
       "Password is too weak. Must include uppercase, lowercase, number, and special character.",
   })
   password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userAgent!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ip!: string;
+}
+
+export class RefreshTokenRequestDto {
+  @IsString()
+  refreshToken!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userAgent!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ip!: string;
+}
+
+export class SignOutRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  refreshToken!: string;
 }

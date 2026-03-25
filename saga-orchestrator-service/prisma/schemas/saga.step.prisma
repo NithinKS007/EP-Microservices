@@ -1,0 +1,41 @@
+model SagaStep {
+    id        String @id @default(uuid())
+    sagaId    String
+    stepName  String
+    stepOrder Int
+
+    status     StepStatus
+    retryCount Int        @default(0)
+
+    errorMessage String?
+
+    startedAt   DateTime?
+    completedAt DateTime?
+
+    saga Saga @relation(fields: [sagaId], references: [id])
+
+    @@unique([sagaId, stepOrder])
+    @@index([sagaId])
+}
+
+enum StepStatus {
+    pending // Not yet executed
+    in_progress // Currently executing
+    completed // Successfully executed
+    failed // Execution failed
+    compensating // Running compensation logic
+    compensated // Compensation completed successfully
+    skipped // Step intentionally skipped (rare but useful)
+
+    @@map("enum_step_status")
+}
+
+// pending : Step defined but not started.
+// in_progress : Important for crash recovery — tells you where you died.
+// completed : Normal success.
+// failed : Used before deciding whether to retry or compensate.
+// compensating : Rollback in progress.
+// compensated : Rollback done.
+// skipped : Optional, but useful if:
+// Conditional steps : Feature flags
+// Branching logic : You can remove this if you don’t plan branching.

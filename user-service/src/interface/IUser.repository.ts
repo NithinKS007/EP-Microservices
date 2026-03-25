@@ -12,7 +12,6 @@ export type UserModel = Prisma.UserGetPayload<{}>;
 export type UserCreateData = Prisma.UserCreateInput;
 export type UserUpdateData = Prisma.UserUpdateInput;
 export type UserWhere = Prisma.UserWhereInput;
-export type UserFindManyArgs = Prisma.UserFindManyArgs;
 
 /**
  * User Repository contract
@@ -22,6 +21,7 @@ export interface IUserRepository extends DatabaseAdapter<
   UserModel,
   UserCreateData,
   UserUpdateData,
-  UserWhere,
-  UserFindManyArgs
-> {}
+  UserWhere
+> {
+  findByEmail(email: string): Promise<UserModel | null>;
+}

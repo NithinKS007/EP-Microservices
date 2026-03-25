@@ -6,6 +6,7 @@ import { UserController } from "./controllers/user.controller";
 import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";
 import { UserGrpcController } from "./grpc/user.server";
+import { CustomMiddleware } from "../../utils/src";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -28,6 +29,7 @@ container.register({
     })),
   userController: asClass(UserController).scoped(),
   userGrpcController: asClass(UserGrpcController).scoped(),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
 export { container };

@@ -13,7 +13,6 @@ export type SeatModel = Prisma.SeatGetPayload<{}>;
 export type SeatCreateData = Prisma.SeatCreateInput;
 export type SeatUpdateData = Prisma.SeatUpdateInput;
 export type SeatWhere = Prisma.SeatWhereInput;
-export type SeatFindManyArgs = Prisma.SeatFindManyArgs;
 
 /**
  * Seat Repository contract
@@ -22,8 +21,7 @@ export interface ISeatRepository extends DatabaseAdapter<
   SeatModel,
   SeatCreateData,
   SeatUpdateData,
-  SeatWhere,
-  SeatFindManyArgs
+  SeatWhere
 > {
   /**
    * Bulk create seats for an event
@@ -42,7 +40,55 @@ export interface ISeatRepository extends DatabaseAdapter<
    * */
   findSeatNumbersByEvent(eventId: string, seatNumbers: string[]): Promise<string[]>;
 
+  /**
+   * Find seats with pagination
+   *
+   * @param data - GetSeatsQueryDto
+   * @returns { data: SeatModel[], meta: { total: number; page: number; limit: number } }
+   * */
   findSeatsWithPagination(
     data: GetSeatsQueryDto,
   ): Promise<{ data: SeatModel[]; meta: { total: number; page: number; limit: number } }>;
+
+  /**
+   * Lock seats
+   *
+   * @param bookingId - Booking ID
+   * @param eventId - Event ID
+   * @param expiryDate - Expiry date
+   * @param seatNumbers - Array of seat numbers to lock
+   * @returns void
+   * */
+  lockSeats(
+    bookingId: string,
+    eventId: string,
+    expiryDate: Date,
+    seatNumbers: string[],
+  ): Promise<void>;
+
+  /**
+   * Confirm seats
+   *
+   * @param bookingId - Booking ID
+   * @returns void
+   * */
+  confirmSeats(bookingId: string): Promise<void>;
+
+  /**
+   * Release seats
+   *
+   * @param bookingId - Booking ID
+   * @returns void
+   * */
+  releaseSeats(bookingId: string): Promise<void>;
+
+  /**
+   * Count sold seats
+   *
+   * @param eventId - Event ID
+   * @returns number
+   * */
+  countSoldSeats(eventId: string): Promise<number>;
+
+  findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]>;
 }

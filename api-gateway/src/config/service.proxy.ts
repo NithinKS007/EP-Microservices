@@ -27,7 +27,13 @@ class ServiceProxy {
       name: "auth-service",
       path: "/auth-service",
       url: envConfig.AUTH_SERVICE_URL,
-      publicRoutes: ["/api/v1/auth/sign-in", "/api/v1/auth/signup", "/health"],
+      publicRoutes: [
+        "/api/v1/auth/sign-in",
+        "/api/v1/auth/sign-up",
+        "/api/v1/auth/password-reset",
+        "/api/v1/auth/password-reset/:token",
+        "/health",
+      ],
     },
     {
       name: "user-service",
@@ -39,6 +45,18 @@ class ServiceProxy {
       name: "event-service",
       path: "/event-service",
       url: envConfig.EVENT_SERVICE_URL,
+      publicRoutes: ["/health"],
+    },
+    {
+      name: "booking-service",
+      path: "/booking-service",
+      url: envConfig.BOOKING_SERVICE_URL,
+      publicRoutes: ["/health"],
+    },
+    {
+      name: "payment-service",
+      path: "/payment-service",
+      url: envConfig.PAYMENT_SERVICE_URL,
       publicRoutes: ["/health"],
     },
   ];
@@ -120,19 +138,34 @@ class ServiceProxy {
     req: IncomingMessage & { body?: any },
     res: ServerResponse,
   ): void {
+    if (req.headers["user-agent"]) {
+      proxyReq.setHeader("user-agent", req.headers["user-agent"]);
+    }
+
+    const existingForwarded = req.headers["x-forwarded-for"];
+    const clientIp = req.socket.remoteAddress || "";
+
+    const ip = existingForwarded ? `${existingForwarded}, ${clientIp}` : clientIp;
+
+    proxyReq.setHeader("x-forwarded-for", ip);
+
     if (req.headers["x-id"]) proxyReq.setHeader("x-id", req.headers["x-id"]);
     if (req.headers["x-role"]) proxyReq.setHeader("x-role", req.headers["x-role"]);
     if (req.headers["x-email"]) proxyReq.setHeader("x-email", req.headers["x-email"]);
 
     const requestId = req.headers["x-request-id"] || `${Date.now()}-${Math.random()}`;
     proxyReq.setHeader("x-request-id", requestId);
+
     if (req.body && typeof req.body === "object") {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader("Content-Type", "application/json");
       proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
       proxyReq.write(bodyData);
     }
-    logger.info(`Proxying request ${req.method} ${req.url}`);
+    logger.info(
+      `Proxying request ${req.method} ${req.url} | requestId=${requestId} | ip=${ip} | ua=${req.headers["user-agent"]}|
+       x-id=${req.headers["x-id"]}| x-role=${req.headers["x-role"]}| x-email=${req.headers["x-email"]}`,
+    );
   }
 
   /**
@@ -175,15 +208,14 @@ class ServiceProxy {
           app.all(fullPath, proxy);
           logger.info(`Registered Public Route: [${service.name}] ${fullPath}`);
         });
-      } else {
-        // 2. Register PROTECTED routes
-        // By placing this AFTER the public routes, we rely on Express's top-down matching.
-        // However, to prevent the public routes from being hit by this middleware,
-        // we ensure the proxy logic is clean.
-        app.use(service.path, authenticate, proxy);
-
-        logger.info(`Registered Protected Path: [${service.name}] ${service.path}`);
       }
+      // 2. Register PROTECTED routes
+      // By placing this AFTER the public routes, we rely on Express's top-down matching.
+      // However, to prevent the public routes from being hit by this middleware,
+      // we ensure the proxy logic is clean.
+      app.use(service.path, authenticate, proxy);
+
+      logger.info(`Registered Protected Path: [${service.name}] ${service.path}`);
     });
   }
 }

@@ -40,7 +40,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 const startServer = async () => {
   try {
-    console.log("🚀 Starting POS Backend Server...!");
+    console.log("🚀 Starting Backend Server...!");
 
     // Connect to Database
     const databaseConnected = await connectPrisma();

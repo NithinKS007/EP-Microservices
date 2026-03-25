@@ -1,9 +1,15 @@
-import { createContainer, asClass } from "awilix";
+import { createContainer, asClass, asValue } from "awilix";
 import { AuthController } from "./controllers/auth.controller";
 import { AuthService } from "./services/auth.service";
-import { KafkaService, JwtService } from "../../utils/src";
+import { KafkaService, JwtService, TokenService, CronRunner, EmailService, CustomMiddleware } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 import { UserServiceGrpcClient } from "./grpc/user.client";
+import { RefreshTokenRepository } from "./repositories/refresh.token.repository";
+import { TokenCleanupJob } from "./utils/cronjob";
+import { PasswordController } from "./controllers/password.controller";
+import { PasswordService } from "./services/password.service";
+import { PasswordResetTokenRepository } from "./repositories/password.token.repository";
+import { prisma } from "./utils/dbconfig";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -15,9 +21,19 @@ const refreshSecret = envConfig.JWT_REFRESH_TOKEN_SECRET;
 const accessExpiration = envConfig.JWT_ACCESS_TOKEN_EXPIRATION;
 const refreshExpiration = envConfig.JWT_REFRESH_TOKEN_EXPIRATION;
 
+const emailUser = envConfig.EMAIL_USER;
+const emailPass = envConfig.EMAIL_PASS;
+
+container.register({
+  prisma: asValue(prisma),
+});
+
 container.register({
   authService: asClass(AuthService).scoped(),
+  passwordService: asClass(PasswordService).scoped(),
   authController: asClass(AuthController).scoped(),
+  passwordController: asClass(PasswordController).scoped(),
+
   kafkaService: asClass(KafkaService)
     .scoped()
     .inject(() => ({
@@ -34,6 +50,18 @@ container.register({
       refreshExpiration,
     })),
   userServiceGrpcClient: asClass(UserServiceGrpcClient).scoped(),
+  refreshTokenRepository: asClass(RefreshTokenRepository).scoped(),
+  passwordResetTokenRepository: asClass(PasswordResetTokenRepository).scoped(),
+  tokenService: asClass(TokenService).scoped(),
+  cronRunner: asClass(CronRunner).scoped(),
+  tokenCleanupJob: asClass(TokenCleanupJob).scoped(),
+  emailService: asClass(EmailService)
+    .scoped()
+    .inject(() => ({
+      emailUser,
+      emailPass,
+    })),
+  customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
 export { container };
