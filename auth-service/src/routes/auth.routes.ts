@@ -20,9 +20,9 @@ router.patch("/password-reset/:token",asyncHandler(passController.changePassUsin
 // AUTHENTICATION REQUIRED APIS
 router.use( customMiddleware.context.bind(customMiddleware));
 router.use( customMiddleware.authorize(["ADMIN","USER"]).bind(customMiddleware));
+router.use(customMiddleware.requestLogger.bind(customMiddleware));
 router.post("/sign-out",asyncHandler(authController.signout.bind(authController)));
 router.post("/refresh-token",asyncHandler(authController.refreshToken.bind(authController)));
 router.patch("/password/change",asyncHandler(passController.changePass.bind(passController)));
-router.use(customMiddleware.requestLogger.bind(customMiddleware));
 
 export { router };
