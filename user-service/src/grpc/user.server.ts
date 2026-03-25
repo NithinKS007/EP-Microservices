@@ -72,11 +72,12 @@ export class UserGrpcController {
   ) {
     const { userId } = call.request;
     this.userService
-      .findUserById(userId, true)
-      .then(() =>
+      .findUserById(userId)
+      .then((user) =>
         callback(null, {
           success: true,
           message: "User found successfully",
+          user: user ? { ...user, role: this.mapRole(user.role) } : undefined,
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

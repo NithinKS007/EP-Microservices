@@ -12,7 +12,7 @@ export class UserController {
   async findUserById(req: AuthReq, res: Response): Promise<void> {
     const data = await validateDto(FindUserByIdRequestDto, req.params);
     const { id } = data;
-    const result = await this.userService.findUserById(id, false);
+    const result = await this.userService.findUserByIdOrThrow(id);
     sendResponse(res, StatusCodes.OK, result, "User found successfully");
   }
 

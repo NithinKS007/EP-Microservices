@@ -9,10 +9,8 @@ export class UserService {
     this.userRepository = userRepository;
   }
 
-  async findUserById(
-    id: string,
-    isGrpcCall: boolean,
-  ): Promise<
+  // USED IN REST
+  async findUserByIdOrThrow(id: string): Promise<
     | (Omit<UserEntity, "password"> & {
         password?: string;
       })
@@ -22,15 +20,18 @@ export class UserService {
 
     const user = await this.userRepository.findById(id);
     if (!user) {
-      if (isGrpcCall) return undefined;
       throw new NotFoundError("User not found, Please try again later");
     }
 
-    if (!isGrpcCall) {
-      const { password, ...safeUser } = user;
-      return safeUser;
-    }
-    return user;
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  async findUserById(id: string): Promise<UserEntity | undefined
+  > {
+    if (!id) throw new ValidationError("User id is required");
+    const user = await this.userRepository.findById(id);
+    return user ? user : undefined;
   }
 
   // USED IN GRPC
