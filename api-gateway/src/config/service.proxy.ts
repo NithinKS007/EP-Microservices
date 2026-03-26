@@ -1,7 +1,7 @@
 import { envConfig } from "./env.config";
 import { Application } from "express";
 import { createProxyMiddleware, Options } from "http-proxy-middleware";
-import { logger } from "../../../utils/src";
+import { codeGenerator, logger } from "../../../utils/src";
 import { ClientRequest, IncomingMessage, ServerResponse } from "http";
 import { Socket } from "net";
 import { authenticate } from "./../middlewares/auth.middleware";
@@ -153,7 +153,7 @@ class ServiceProxy {
     if (req.headers["x-role"]) proxyReq.setHeader("x-role", req.headers["x-role"]);
     if (req.headers["x-email"]) proxyReq.setHeader("x-email", req.headers["x-email"]);
 
-    const requestId = req.headers["x-request-id"] || `${Date.now()}-${Math.random()}`;
+    const requestId = req.headers["x-request-id"] || `${codeGenerator().code}`;
     proxyReq.setHeader("x-request-id", requestId);
 
     if (req.body && typeof req.body === "object") {
