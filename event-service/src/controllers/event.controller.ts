@@ -30,7 +30,7 @@ export class EventController {
 
   async updateEvent(req: AuthReq, res: Response): Promise<void> {
     const { id } = req.params;
-    const data = await validateDto(UpdateEventDto, req.body);
+    const data = await validateDto(UpdateEventDto, { ...req.body, id });
     await this.eventService.updateEvent(id, data);
     sendResponse(res, StatusCodes.OK, null, "Event updated successfully");
   }

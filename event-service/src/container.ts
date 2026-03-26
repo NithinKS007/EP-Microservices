@@ -11,6 +11,7 @@ import { UnitOfWork } from "./repositories/unity.of.work";
 import { CustomMiddleware } from "../../utils/src/auth.middleware";
 import { SeatController } from "./controllers/seat.controller";
 import { EventService } from "./services/event.service";
+import { EventGrpcController } from "./grpc/event.server";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -56,6 +57,7 @@ container.register({
       emailPass,
     })),
   tokenService: asClass(TokenService).scoped(),
+  eventGrpcController: asClass(EventGrpcController).scoped(),
 });
 
 export { container };

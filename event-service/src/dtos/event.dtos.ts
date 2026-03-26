@@ -30,7 +30,11 @@ export class CreateEventDto {
   eventDate!: Date;
 }
 
-export class UpdateEventDto extends CreateEventDto {}
+export class UpdateEventDto extends CreateEventDto {
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
+}
 
 export class GetEventsQueryDto {
   @IsOptional()
