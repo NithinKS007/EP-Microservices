@@ -62,6 +62,15 @@ services:
     build:
       context: .
       dockerfile: ./api-gateway/Dockerfile
+    command: npm run dev
+    working_dir: /app/api-gateway
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./api-gateway:/app/api-gateway
+      - ./utils:/app/utils
+      - /app/api-gateway/node_modules
     restart: always
     env_file:
       - ./api-gateway/.env
@@ -90,6 +99,15 @@ services:
     build:
       context: .
       dockerfile: ./auth-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/auth-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./auth-service:/app/auth-service
+      - ./utils:/app/utils
+      - /app/auth-service/node_modules
     restart: always      
     env_file:
       - ./auth-service/.env
@@ -112,6 +130,15 @@ services:
     build:
       context: .
       dockerfile: ./user-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/user-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./user-service:/app/user-service
+      - ./utils:/app/utils
+      - /app/user-service/node_modules
     restart: always      
     env_file:
       - ./user-service/.env
@@ -134,6 +161,15 @@ services:
     build:
       context: .
       dockerfile: ./event-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/event-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./event-service:/app/event-service
+      - ./utils:/app/utils
+      - /app/event-service/node_modules
     restart: always      
     env_file:
       - ./event-service/.env
@@ -156,6 +192,15 @@ services:
     build:
       context: .
       dockerfile: ./booking-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/booking-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./booking-service:/app/booking-service
+      - ./utils:/app/utils
+      - /app/booking-service/node_modules
     restart: always      
     env_file:
       - ./booking-service/.env
@@ -178,6 +223,15 @@ services:
     build:
       context: .
       dockerfile: ./payment-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/payment-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./payment-service:/app/payment-service
+      - ./utils:/app/utils
+      - /app/payment-service/node_modules
     restart: always      
     env_file:
       - ./payment-service/.env
@@ -200,6 +254,15 @@ services:
     build:
       context: .
       dockerfile: ./saga-orchestrator-service/Dockerfile
+    command: npm run dev
+    working_dir: /app/saga-orchestrator-service
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./saga-orchestrator-service:/app/saga-orchestrator-service
+      - ./utils:/app/utils
+      - /app/saga-orchestrator-service/node_modules
     restart: always      
     env_file:
       - ./saga-orchestrator-service/.env

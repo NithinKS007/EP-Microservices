@@ -13,6 +13,7 @@ import { envConfig } from "./config/env.config";
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+console.log("c");
 
   try {
     console.log("✅ Graceful shutdown completed");
