@@ -1,7 +1,12 @@
 import { UserService } from "services/user.service";
 import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Request, Response } from "express";
-import { FindUserByIdRequestDto, UpdateUserRequestDto } from "./../dtos/user.dto";
+import {
+  FindUserByIdRequestDto,
+  UpdateSystemRoleRequestDto,
+  UpdateUserRequestDto,
+} from "./../dtos/user.dto";
+import { envConfig } from "./../config/env.config";
 
 export class UserController {
   private readonly userService: UserService;
@@ -21,5 +26,20 @@ export class UserController {
     const { id, name } = data;
     await this.userService.updateUser(id, name);
     sendResponse(res, StatusCodes.OK, null, "User updated successfully");
+  }
+
+  async updateRole(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(UpdateSystemRoleRequestDto, { ...req.body });
+    if (data.systemCode !== envConfig.SYSTEM_CODE) {
+      sendResponse(res, StatusCodes.Unauthorized, null, "Unauthorized");
+      return;
+    }
+    if (req.user?.id === data.id) {
+      sendResponse(res, StatusCodes.BadRequest, null, "You cannot update your own role");
+      return;
+    }
+    const { id, role } = data;
+    await this.userService.updateUserRole(id, role);
+    sendResponse(res, StatusCodes.OK, null, "Role updated successfully");
   }
 }

@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY saga-orchestrator-service/package*.json ./saga-orchestrator-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../saga-orchestrator-service && npm ci
+RUN cd utils && npm ci 
+RUN cd saga-orchestrator-service && npm ci
 
 # Copy full source
 COPY utils ./utils

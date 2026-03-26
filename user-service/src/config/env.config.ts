@@ -8,6 +8,7 @@ interface Env {
   KAFKA_CLIENT_ID: string;
   KAFKA_GROUP_ID: string;
   KAFKA_ENABLED: string;
+  SYSTEM_CODE: string;
 }
 
 export const envConfig: Env = {
@@ -20,4 +21,6 @@ export const envConfig: Env = {
   KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID || "user-service",
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || "user-service-group",
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "false",
+  SYSTEM_CODE: process.env.SYSTEM_CODE || "user-service",
+
 };

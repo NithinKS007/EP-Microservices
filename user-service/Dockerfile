@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY user-service/package*.json ./user-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../user-service && npm ci
+RUN cd utils && npm ci 
+RUN cd user-service && npm ci
 
 # Copy full source
 COPY utils ./utils

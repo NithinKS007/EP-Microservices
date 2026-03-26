@@ -14,3 +14,17 @@ export class UpdateUserRequestDto {
   @IsString()
   name!: string;
 }
+
+export class UpdateSystemRoleRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role!: "USER" | "ADMIN";
+
+  @IsString()
+  @IsNotEmpty()
+  systemCode!: string;
+}

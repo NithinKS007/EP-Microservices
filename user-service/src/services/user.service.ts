@@ -23,14 +23,17 @@ export class UserService {
       throw new NotFoundError("User not found, Please try again later");
     }
 
+    logger.info(`Finding user by id ${id}`);
+    logger.info(`user in findUserByIdOrThrow user service => ${JSON.stringify(user)}`);
     const { password, ...safeUser } = user;
     return safeUser;
   }
 
-  async findUserById(id: string): Promise<UserEntity | undefined
-  > {
+  async findUserById(id: string): Promise<UserEntity | undefined> {
     if (!id) throw new ValidationError("User id is required");
     const user = await this.userRepository.findById(id);
+    logger.info(`Finding user by id ${id}`);
+    logger.info(`user in findUserById user service => ${JSON.stringify(user)}`);
     return user ? user : undefined;
   }
 
@@ -48,8 +51,9 @@ export class UserService {
   async findUserByEmail(data: { email: string }): Promise<UserEntity | undefined> {
     const { email } = data;
     if (!email) throw new ValidationError("Email is required");
-    logger.info(`Finding user by email ${email}`);
     const user = await this.userRepository.findByEmail(email);
+    logger.info(`Finding user by email ${email}`);
+    logger.info(`user in findUserByEmail user service => ${JSON.stringify(user)}`);
     return user ? user : undefined;
   }
 
@@ -63,5 +67,10 @@ export class UserService {
   async updateUser(id: string, name: string): Promise<void> {
     if (!id || !name) throw new ValidationError("User id and name are required");
     await this.userRepository.update({ id }, { name });
+  }
+
+  async updateUserRole(id: string, role: "USER" | "ADMIN"): Promise<void> {
+    if (!id || !role) throw new ValidationError("User id and role are required");
+    await this.userRepository.update({ id }, { role });
   }
 }

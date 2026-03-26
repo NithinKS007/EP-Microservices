@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY payment-service/package*.json ./payment-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../payment-service && npm ci
+RUN cd utils && npm ci 
+RUN cd payment-service && npm ci
 
 # Copy full source
 COPY utils ./utils
