@@ -15,6 +15,7 @@ interface Env {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET: string;
+
   BOOKING_SERVICE_URL_GRPC: string;
   EVENT_SERVICE_URL_GRPC: string;
 }
@@ -36,6 +37,7 @@ export const envConfig: Env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "rzp_test_1",
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "rzp_test_1",
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "rzp_test_1",
+  
   BOOKING_SERVICE_URL_GRPC: process.env.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   EVENT_SERVICE_URL_GRPC: process.env.EVENT_SERVICE_URL_GRPC || "event:50052",
 
