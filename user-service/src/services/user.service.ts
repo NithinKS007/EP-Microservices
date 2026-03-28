@@ -103,7 +103,10 @@ export class UserService {
     await this.userRepository.update({ id }, { role });
   }
 
-  async findUsers(data: { limit: string; page: string }): Promise<UserEntity[]> {
+  async findUsers(data: {
+    limit: number;
+    page: number;
+  }): Promise<{ data: UserEntity[]; meta: { total: number; page: number; limit: number } }> {
     const { limit, page } = data;
     if (!limit || !page) throw new ValidationError("Limit and page are required");
     return await this.userRepository.findUsersWithPagination({ limit, page });

@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsNotEmpty, IsString, Max, Min } from "class-validator";
+import { Type } from "class-transformer";
 
 export class FindUserByIdRequestDto {
   @IsString()
@@ -33,9 +34,15 @@ export class FindPaginatedUsersRequestDto {
 
   @IsString()
   @IsNotEmpty()
-  limit!: string;
+  @Type(() => Number)
+  @Min(1)
+  @Max(100)
+  limit!: number;
 
   @IsString()
   @IsNotEmpty()
-  page!: string;
+  @Type(() => Number)
+  @Min(1)
+  @Max(100)
+  page!: number;
 }

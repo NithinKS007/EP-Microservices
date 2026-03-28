@@ -24,11 +24,31 @@ export class UserRepository
     });
   }
 
-  async findUsersWithPagination(data: { limit: string; page: string }): Promise<UserModel[]> {
-    const { limit, page } = data;
-    return await this.prisma.user.findMany({
-      take: parseInt(limit),
-      skip: (parseInt(page) - 1) * parseInt(limit),
-    });
+  async findUsersWithPagination(dto: {
+    limit: number;
+    page: number;
+  }): Promise<{ data: UserModel[]; meta: { total: number; page: number; limit: number } }> {
+    const { limit, page } = dto;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+      this.prisma.user.count({}),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+      },
+    };
   }
 }
