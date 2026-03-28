@@ -2,6 +2,7 @@ import { UserService } from "services/user.service";
 import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Request, Response } from "express";
 import {
+  FindPaginatedUsersRequestDto,
   FindUserByIdRequestDto,
   UpdateSystemRoleRequestDto,
   UpdateUserRequestDto,
@@ -41,5 +42,11 @@ export class UserController {
     const { id, role } = data;
     await this.userService.updateUserRole(id, role);
     sendResponse(res, StatusCodes.OK, null, "Role updated successfully");
+  }
+ 
+  async findUsers(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(FindPaginatedUsersRequestDto, req.query);
+    const result = await this.userService.findUsers(data);
+    sendResponse(res, StatusCodes.OK, result, "Users found successfully");
   }
 }

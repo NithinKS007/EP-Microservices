@@ -102,4 +102,10 @@ export class UserService {
     if (!id || !role) throw new ValidationError("User id and role are required");
     await this.userRepository.update({ id }, { role });
   }
+
+  async findUsers(data: { limit: string; page: string }): Promise<UserEntity[]> {
+    const { limit, page } = data;
+    if (!limit || !page) throw new ValidationError("Limit and page are required");
+    return await this.userRepository.findUsersWithPagination({ limit, page });
+  }
 }

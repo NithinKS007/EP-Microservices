@@ -24,4 +24,5 @@ export interface IUserRepository extends DatabaseAdapter<
   UserWhere
 > {
   findByEmail(email: string): Promise<UserModel | null>;
+  findUsersWithPagination(data: { limit: string; page: string }): Promise<UserModel[]>;
 }

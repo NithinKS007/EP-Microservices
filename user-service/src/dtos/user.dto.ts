@@ -28,3 +28,14 @@ export class UpdateSystemRoleRequestDto {
   @IsNotEmpty()
   systemCode!: string;
 }
+
+export class FindPaginatedUsersRequestDto {
+
+  @IsString()
+  @IsNotEmpty()
+  limit!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  page!: string;
+}

@@ -15,12 +15,20 @@ export class UserRepository
   private readonly prisma: PrismaClient | Prisma.TransactionClient;
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.user));
-    this.prisma = prisma
+    this.prisma = prisma;
   }
 
   async findByEmail(email: string): Promise<UserModel | null> {
     return await this.prisma.user.findFirst({
       where: { email },
+    });
+  }
+
+  async findUsersWithPagination(data: { limit: string; page: string }): Promise<UserModel[]> {
+    const { limit, page } = data;
+    return await this.prisma.user.findMany({
+      take: parseInt(limit),
+      skip: (parseInt(page) - 1) * parseInt(limit),
     });
   }
 }
