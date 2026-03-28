@@ -93,4 +93,13 @@ export class BookingService {
       totalAmount: Number(booking.totalAmount),
     };
   }
+
+  async findBookingsByEvent(eventId: string) {
+    if (!eventId) throw new ValidationError("Missing required fields");
+    const bookings = await this.bookingRepository.findBookingsByEventId(eventId);
+    return bookings.map((booking) => ({
+      ...booking,
+      totalAmount: Number(booking.totalAmount),
+    }));
+  }
 }

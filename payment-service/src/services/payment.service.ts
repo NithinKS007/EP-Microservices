@@ -6,6 +6,7 @@ import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
 import { UnitOfWork } from "../repositories/unity.of.work";
+import { PaymentStatus } from "../generated/prisma/client";
 
 export class PaymentService {
   private readonly paymentRepository: IPaymentRepository;
@@ -159,6 +160,54 @@ export class PaymentService {
 
     return {
       bookingId: existing.bookingId,
+    };
+  }
+
+  async findPaymentsByBookingIds(bookingIds: string[]) {
+    if (!bookingIds.length) {
+      return [];
+    }
+
+    const payments = await this.paymentRepository.findPaymentsByBookingIds(bookingIds);
+    return payments.map((payment) => ({
+      ...payment,
+      amount: Number(payment.amount),
+    }));
+  }
+
+  async updatePaymentStatus(paymentId: string, status: PaymentStatus) {
+    if (!paymentId || !status) {
+      throw new ValidationError("Missing required fields");
+    }
+
+    const existing = await this.paymentRepository.findById(paymentId);
+    if (!existing) {
+      throw new ValidationError("Payment not found, Please try again later");
+    }
+
+    if (status === "REFUNDED" && existing.status !== "SUCCESS") {
+      throw new ValidationError("Only successful payments can be refunded");
+    }
+
+    if (status === "FAILED" && existing.status === "SUCCESS") {
+      throw new ValidationError("Successful payments must be refunded instead of failed");
+    }
+
+    if (existing.status === status) {
+      return {
+        ...existing,
+        amount: Number(existing.amount),
+      };
+    }
+
+    const payment = await this.paymentRepository.update({ id: paymentId }, { status });
+    if (!payment) {
+      throw new ValidationError("Failed to update payment status, Please try again later");
+    }
+
+    return {
+      ...payment,
+      amount: Number(payment.amount),
     };
   }
 

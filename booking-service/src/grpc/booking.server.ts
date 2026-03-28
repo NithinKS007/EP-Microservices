@@ -3,6 +3,8 @@ import {
   toGrpcError,
   FindBookingRequest,
   FindBookingResponse,
+  FindBookingsByEventRequest,
+  FindBookingsByEventResponse,
   UpdateBookingStatusRequest,
   UpdateBookingStatusResponse,
   UpdateBookingAmountRequest,
@@ -30,6 +32,26 @@ export class BookingGrpcController {
           success: true,
           message: "Booking found successfully",
           booking: { ...booking, status: this.mapBookingStatusToGrpc(booking.status) },
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  findBookingsByEvent(
+    call: ServerUnaryCall<FindBookingsByEventRequest, FindBookingsByEventResponse>,
+    callback: SendUnaryData<FindBookingsByEventResponse>,
+  ): void {
+    const { eventId } = call.request;
+    this.bookingService
+      .findBookingsByEvent(eventId)
+      .then((bookings) =>
+        callback(null, {
+          success: true,
+          message: "Bookings found successfully",
+          bookings: bookings.map((booking) => ({
+            ...booking,
+            status: this.mapBookingStatusToGrpc(booking.status),
+          })),
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

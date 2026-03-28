@@ -12,6 +12,8 @@ import { CustomMiddleware } from "../../utils/src/auth.middleware";
 import { SeatController } from "./controllers/seat.controller";
 import { EventService } from "./services/event.service";
 import { EventGrpcController } from "./grpc/event.server";
+import { BookingServiceGrpcClient } from "./grpc/booking.client";
+import { PaymentServiceGrpcClient } from "./grpc/payment.client";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -58,6 +60,8 @@ container.register({
     })),
   tokenService: asClass(TokenService).scoped(),
   eventGrpcController: asClass(EventGrpcController).scoped(),
+  bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
+  paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
 });
 
 export { container };

@@ -16,6 +16,7 @@ router.post("/", customMiddleware.authorize(["ADMIN"]), asyncHandler(eventContro
 router.get("/", asyncHandler(eventController.findEventsWithPagination.bind(eventController)));
 router.get("/:id", asyncHandler(eventController.findEventById.bind(eventController)));
 router.put("/:id", customMiddleware.authorize(["ADMIN"]), asyncHandler(eventController.updateEvent.bind(eventController)));
+router.patch("/:id/cancel", customMiddleware.authorize(["ADMIN"]), asyncHandler(eventController.cancelEvent.bind(eventController)));
 router.delete("/:id", customMiddleware.authorize(["ADMIN"]), asyncHandler(eventController.deleteEvent.bind(eventController)));
 
 export default router;

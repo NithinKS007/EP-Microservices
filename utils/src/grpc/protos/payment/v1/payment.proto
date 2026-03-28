@@ -4,6 +4,27 @@ package payment.v1;
 
 service PaymentService {
   rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+  rpc FindPaymentsByBookingIds(FindPaymentsByBookingIdsRequest) returns (FindPaymentsByBookingIdsResponse);
+  rpc UpdatePaymentStatus(UpdatePaymentStatusRequest) returns (UpdatePaymentStatusResponse);
+}
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_INITIATED = 1;
+  PAYMENT_STATUS_SUCCESS = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_REFUNDED = 4;
+}
+
+message Payment {
+  string id = 1;
+  string booking_id = 2;
+  string user_id = 3;
+  double amount = 4;
+  string currency = 5;
+  PaymentStatus status = 6;
+  string provider = 7;
+  string provider_ref = 8;
 }
 
 message CreatePaymentRequest {
@@ -15,6 +36,26 @@ message CreatePaymentRequest {
 }
 
 message CreatePaymentResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message FindPaymentsByBookingIdsRequest {
+  repeated string booking_ids = 1;
+}
+
+message FindPaymentsByBookingIdsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Payment payments = 3;
+}
+
+message UpdatePaymentStatusRequest {
+  string payment_id = 1;
+  PaymentStatus status = 2;
+}
+
+message UpdatePaymentStatusResponse {
   bool success = 1;
   string message = 2;
 }

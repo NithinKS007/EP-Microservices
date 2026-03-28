@@ -55,4 +55,17 @@ export class PaymentRepository
       },
     });
   }
+
+  async findPaymentsByBookingIds(bookingIds: string[]): Promise<PaymentModel[]> {
+    if (bookingIds.length === 0) {
+      return [];
+    }
+
+    return await this.prisma.payment.findMany({
+      where: {
+        bookingId: { in: bookingIds },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  }
 }

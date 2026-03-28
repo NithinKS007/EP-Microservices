@@ -26,4 +26,5 @@ export interface IPaymentRepository extends DatabaseAdapter<
   updateManyPaymentsNotSuccess(paymentId: string): Promise<Prisma.BatchPayload>;
   updateManyPaymentsNotFailed(paymentId: string): Promise<Prisma.BatchPayload>;
   findByOrderId(orderId: string): Promise<PaymentModel | null>;
+  findPaymentsByBookingIds(bookingIds: string[]): Promise<PaymentModel[]>;
 }

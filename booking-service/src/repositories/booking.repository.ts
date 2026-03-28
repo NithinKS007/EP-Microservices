@@ -12,7 +12,17 @@ export class BookingRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements IBookingRepository
 {
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
+
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.booking));
+    this.prisma = prisma;
+  }
+
+  async findBookingsByEventId(eventId: string): Promise<TModel[]> {
+    return await this.prisma.booking.findMany({
+      where: { eventId },
+      orderBy: { createdAt: "asc" },
+    });
   }
 }

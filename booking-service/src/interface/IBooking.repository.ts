@@ -22,4 +22,6 @@ export interface IBookingRepository extends DatabaseAdapter<
   BookingCreateData,
   BookingUpdateData,
   BookingWhere
-> {}
+> {
+  findBookingsByEventId(eventId: string): Promise<BookingModel[]>;
+}

@@ -29,6 +29,8 @@ export {
 export {
   FindBookingRequest,
   FindBookingResponse,
+  FindBookingsByEventRequest,
+  FindBookingsByEventResponse,
   UpdateBookingStatusRequest,
   UpdateBookingStatusResponse,
   UpdateBookingAmountRequest,
@@ -54,9 +56,14 @@ export {
 export {
   CreatePaymentRequest,
   CreatePaymentResponse,
+  FindPaymentsByBookingIdsRequest,
+  FindPaymentsByBookingIdsResponse,
+  UpdatePaymentStatusRequest,
+  UpdatePaymentStatusResponse,
   PaymentServiceClient,
   PaymentServiceServer,
   PaymentServiceService,
+  PaymentStatus,
 } from "./grpc/generated/payment/v1/payment";
 
 export { SendUnaryData, ServerUnaryCall } from "./grpc/types";

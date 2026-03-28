@@ -40,4 +40,10 @@ export class EventController {
     await this.eventService.deleteEvent(id);
     sendResponse(res, StatusCodes.OK, null, "Event deleted successfully");
   }
+
+  async cancelEvent(req: AuthReq, res: Response): Promise<void> {
+    const { id } = req.params;
+    const event = await this.eventService.cancelEvent(id);
+    sendResponse(res, StatusCodes.OK, event, "Event cancelled successfully");
+  }
 }

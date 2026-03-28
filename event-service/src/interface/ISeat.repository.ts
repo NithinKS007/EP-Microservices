@@ -83,12 +83,23 @@ export interface ISeatRepository extends DatabaseAdapter<
   releaseSeats(bookingId: string): Promise<void>;
 
   /**
+   * Reset seats reserved or sold under a booking back to available.
+   * Used when an admin cancels an event and related bookings must be unwound.
+   */
+  resetSeatsForBooking(bookingId: string): Promise<void>;
+
+  /**
    * Count sold seats
    *
    * @param eventId - Event ID
    * @returns number
    * */
   countSoldSeats(eventId: string): Promise<number>;
+
+  /**
+   * Count locked seats for an event
+   */
+  countLockedSeats(eventId: string): Promise<number>;
 
   findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]>;
 }
