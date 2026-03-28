@@ -79,7 +79,9 @@ const startServer = async () => {
     });
 
     startSagaGrpcServer();
-    outboxWorker.start();
+    if (envConfig.KAFKA_ENABLED === "true") {
+      outboxWorker.start();
+    }
 
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {

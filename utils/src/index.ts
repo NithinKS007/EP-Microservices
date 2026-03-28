@@ -8,9 +8,11 @@ export { codeGenerator } from "./code-generator";
 export { logger } from "./logger";
 export { DatabaseAdapter } from "./IBase.repository";
 export { KafkaService } from "./kafka.service";
+export { createCircuitBreaker } from "./circuit.breaker";
 export { JwtService } from "./jwt.service";
 export { createGrpcClient } from "./grpc/grpc.client";
 export { startGrpcServer, GrpcHandler, GrpcServiceDef } from "./grpc/grpc.server";
+export { Metadata } from "@grpc/grpc-js";
 export {
   CreateUserRequest,
   CreateUserResponse,

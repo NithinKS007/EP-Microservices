@@ -27,6 +27,7 @@
     "mongoose": "^8.20.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
+    "opossum": "^9.0.0",
     "prisma": "^6.17.1",
     "redis": "^5.8.3"
   },
@@ -38,6 +39,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.0",
     "@types/nodemailer": "^7.0.11",
+    "@types/opossum": "^8.1.9",
     "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "ts-proto": "^2.11.1",

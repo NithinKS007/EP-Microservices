@@ -66,4 +66,47 @@ export class BookingRepository
 
     return result.count;
   }
+
+  /**
+   * Finds bookings that expired before payment completion.
+   * Used in: Booking expiry cleanup flow
+   * Triggered via: Cron job
+   */
+  async findExpiredPendingBookings(limit = 100): Promise<TModel[]> {
+    return await this.prisma.booking.findMany({
+      where: {
+        expiresAt: { lt: new Date() },
+        status: {
+          in: ["PENDING", "PAYMENT_INITIATED"],
+        },
+      },
+      orderBy: { expiresAt: "asc" },
+      take: limit,
+    });
+  }
+
+  /**
+   * Marks expired open bookings as EXPIRED in bulk.
+   * Used in: Booking expiry cleanup flow
+   * Triggered via: Cron job
+   */
+  async bulkExpireBookings(bookingIds: string[]): Promise<number> {
+    if (bookingIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.prisma.booking.updateMany({
+      where: {
+        id: { in: bookingIds },
+        status: {
+          in: ["PENDING", "PAYMENT_INITIATED"],
+        },
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    });
+
+    return result.count;
+  }
 }

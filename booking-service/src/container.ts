@@ -7,7 +7,12 @@ import { BookingController } from "./controllers/booking.controller";
 import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";
 import { BookingGrpcController } from "./grpc/booking.server";
-import { CustomMiddleware } from "../../utils/src";
+import { CronRunner, CustomMiddleware } from "../../utils/src";
+import { UnitOfWork } from "./repositories/unity.of.work";
+import { OutboxEventRepository } from "./repositories/outbox.event.repository";
+import { OutboxWorker } from "./utils/outbox.worker";
+import { EventServiceGrpcClient } from "./grpc/event.client";
+import { BookingExpiryJob } from "./utils/booking.expiry.job";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -23,6 +28,8 @@ container.register({
 
   bookingRepository: asClass(BookingRepository).scoped(),
   bookingSeatRepository: asClass(BookingSeatRepository).scoped(),
+  outboxEventRepository: asClass(OutboxEventRepository).scoped(),
+  unitOfWork: asClass(UnitOfWork).scoped(),
 
   kafkaService: asClass(KafkaService)
     .scoped()
@@ -34,6 +41,10 @@ container.register({
 
   bookingController: asClass(BookingController).scoped(),
   bookingGrpcController: asClass(BookingGrpcController).scoped(),
+  outboxWorker: asClass(OutboxWorker).scoped(),
+  eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
+  cronRunner: asClass(CronRunner).scoped(),
+  bookingExpiryJob: asClass(BookingExpiryJob).scoped(),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 

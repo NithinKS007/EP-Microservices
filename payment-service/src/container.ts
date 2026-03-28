@@ -10,6 +10,8 @@ import { WebhookController } from "./controllers/webhook.controller";
 import { OutboxEventRepository } from "./repositories/outbox.event.repository";
 import { OutboxWorker } from "./utils/outbox.worker";
 import { PaymentEventConsumer } from "./utils/payment.event.consumer";
+import { BookingServiceGrpcClient } from "./grpc/booking.client";
+import { EventServiceGrpcClient } from "./grpc/event.client";
 import { CustomMiddleware } from "../../utils/src";
 
 const container = createContainer();
@@ -38,6 +40,8 @@ container.register({
 
   paymentGrpcController: asClass(PaymentGrpcController).scoped(),
   webhookController: asClass(WebhookController).scoped(),
+  bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
+  eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
 
   outboxWorker: asClass(OutboxWorker).scoped(),
 

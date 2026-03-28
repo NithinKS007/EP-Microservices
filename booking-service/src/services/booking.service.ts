@@ -6,25 +6,30 @@ import {
 } from "../../../utils/src/error.handling.middleware";
 import { IBookingRepository } from "../interface/IBooking.repository";
 import { IBookingSeatRepository } from "../interface/IBooking.seat.repository";
-import { KafkaService } from "../../../utils/src";
+import { UnitOfWork } from "../repositories/unity.of.work";
+import { EventServiceGrpcClient } from "../grpc/event.client";
 
 export class BookingService {
   private readonly bookingRepository: IBookingRepository;
   private readonly bookingSeatRepository: IBookingSeatRepository;
-  private readonly kafkaService: KafkaService;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly eventServiceGrpcClient: EventServiceGrpcClient;
 
   constructor({
     bookingRepository,
     bookingSeatRepository,
-    kafkaService,
+    unitOfWork,
+    eventServiceGrpcClient,
   }: {
     bookingRepository: IBookingRepository;
     bookingSeatRepository: IBookingSeatRepository;
-    kafkaService: KafkaService;
+    unitOfWork: UnitOfWork;
+    eventServiceGrpcClient: EventServiceGrpcClient;
   }) {
     this.bookingRepository = bookingRepository;
     this.bookingSeatRepository = bookingSeatRepository;
-    this.kafkaService = kafkaService;
+    this.unitOfWork = unitOfWork;
+    this.eventServiceGrpcClient = eventServiceGrpcClient;
   }
 
   /**
@@ -49,21 +54,38 @@ export class BookingService {
     let booking;
 
     try {
-      booking = await this.bookingRepository.create({
-        userId,
-        eventId,
-        status: "PENDING",
-        totalAmount,
-        expiresAt: new Date(Date.now() + 20 * 60 * 1000),
-        idempotencyKey,
-        bookingSeats: {
-          createMany: {
-            data: seats.map((s) => ({
-              seatId: s.id,
-              price: s.price,
-            })),
+      booking = await this.unitOfWork.withTransaction(async (repos) => {
+        const createdBooking = await repos.bookingRepository.create({
+          userId,
+          eventId,
+          status: "PENDING",
+          totalAmount,
+          expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+          idempotencyKey,
+          bookingSeats: {
+            createMany: {
+              data: seats.map((s) => ({
+                seatId: s.id,
+                price: s.price,
+              })),
+            },
           },
-        },
+        });
+
+        await repos.outboxEventRepository.create({
+          topic: "booking.created",
+          payload: {
+            bookingId: createdBooking.id,
+            userId,
+            eventId,
+            totalAmount,
+            expiresAt: createdBooking.expiresAt,
+            seatIds: seats.map((s) => s.id),
+          },
+          status: "PENDING",
+        });
+
+        return createdBooking;
       });
     } catch (err) {
       if (idempotencyKey) {
@@ -75,15 +97,6 @@ export class BookingService {
       throw err;
     }
 
-    await this.kafkaService.publishMessage({
-      topic: "booking.created",
-      message: {
-        bookingId: booking.id,
-        userId,
-        eventId,
-        seatIds: seats.map((s) => s.id),
-      },
-    });
     return booking;
   }
 
@@ -113,9 +126,29 @@ export class BookingService {
     status: "PENDING" | "PAYMENT_INITIATED" | "CONFIRMED" | "CANCELLED" | "EXPIRED",
   ) {
     if (!bookingId || !status) throw new ValidationError("Missing required fields");
+    const existing = await this.bookingRepository.findById(bookingId);
+    if (!existing) throw new NotFoundError("Failed to update booking status, Please try again later");
+
+    if (existing.status === status) {
+      return {
+        ...existing,
+        totalAmount: Number(existing.totalAmount),
+      };
+    }
+
+    if (
+      existing.status === "CONFIRMED" ||
+      existing.status === "CANCELLED" ||
+      existing.status === "EXPIRED"
+    ) {
+      return {
+        ...existing,
+        totalAmount: Number(existing.totalAmount),
+      };
+    }
+
     const booking = await this.bookingRepository.update({ id: bookingId }, { status });
-    if (!booking)
-      throw new NotFoundError("Failed to update booking status, Please try again later");
+    if (!booking) throw new NotFoundError("Failed to update booking status, Please try again later");
     return {
       ...booking,
       totalAmount: Number(booking.totalAmount),
@@ -162,6 +195,25 @@ export class BookingService {
     }
 
     const affectedCount = await this.bookingRepository.bulkCancelBookings(bookingIds);
+    return { affectedCount };
+  }
+
+  /**
+   * Expires stale open bookings and releases their locked seats.
+   * Used in: Booking expiry cleanup flow
+   * Triggered via: Cron job
+   */
+  async expirePendingBookings() {
+    const expiredBookings = await this.bookingRepository.findExpiredPendingBookings();
+    if (!expiredBookings.length) {
+      return { affectedCount: 0 };
+    }
+
+    const bookingIds = expiredBookings.map((booking) => booking.id);
+
+    await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds });
+    const affectedCount = await this.bookingRepository.bulkExpireBookings(bookingIds);
+
     return { affectedCount };
   }
 }

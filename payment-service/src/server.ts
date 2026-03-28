@@ -79,7 +79,9 @@ const startServer = async () => {
     });
 
     startPaymentGrpcServer();
-    outboxWorker.start(); // DO NOT AWAIT THIS CALL AS IT'S AN INFINITE LOOP
+    if (envConfig.KAFKA_ENABLED === "true") {
+      outboxWorker.start(); // DO NOT AWAIT THIS CALL AS IT'S AN INFINITE LOOP
+    }
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${envConfig.PORT} is already in use`);

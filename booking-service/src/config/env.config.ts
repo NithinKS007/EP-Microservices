@@ -8,6 +8,7 @@ interface Env {
   KAFKA_CLIENT_ID: string;
   KAFKA_GROUP_ID: string;
   KAFKA_ENABLED: string;
+  EVENT_SERVICE_URL_GRPC: string;
 }
 
 export const envConfig: Env = {
@@ -20,4 +21,5 @@ export const envConfig: Env = {
   KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID || "booking-service",
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || "booking-service-group",
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "false",
+  EVENT_SERVICE_URL_GRPC: process.env.EVENT_SERVICE_URL_GRPC || "event:50052",
 };

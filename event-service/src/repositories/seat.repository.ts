@@ -66,7 +66,19 @@ export class SeatRepository
     seatIds: string[],
   ): Promise<number> {
     const result = await this.prisma.seat.updateMany({
-      where: { eventId, id: { in: seatIds }, seatStatus: "AVAILABLE" },
+      where: {
+        eventId,
+        id: { in: seatIds },
+        OR: [
+          { seatStatus: "AVAILABLE" },
+          {
+            seatStatus: "LOCKED",
+            lockExpiresAt: {
+              lt: new Date(),
+            },
+          },
+        ],
+      },
       data: { seatStatus: "LOCKED", lockedByBookingId: bookingId, lockExpiresAt: expiryDate },
     });
 
@@ -175,8 +187,14 @@ export class SeatRepository
       where: {
         id: { in: seatIds },
         eventId: eventId,
-        seatStatus: { not: "AVAILABLE" },
-      }
+        OR: [
+          { seatStatus: "SOLD" },
+          {
+            seatStatus: "LOCKED",
+            OR: [{ lockExpiresAt: null }, { lockExpiresAt: { gte: new Date() } }],
+          },
+        ],
+      },
     });
   }
 }

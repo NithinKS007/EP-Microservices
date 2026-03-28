@@ -1,7 +1,7 @@
 import { ValidationError } from "../../../utils/src/error.handling.middleware";
 import { IPaymentRepository } from "../interface/IPayment.repository";
 import { IPaymentEventRepository } from "../interface/IPayment.event.repository";
-import { codeGenerator, KafkaService, logger } from "../../../utils/src/index";
+import { codeGenerator, createCircuitBreaker, KafkaService, logger } from "../../../utils/src/index";
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
@@ -13,6 +13,17 @@ export class PaymentService {
   private readonly paymentEventRepository: IPaymentEventRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly kafkaService: KafkaService;
+  private readonly razorpay = new Razorpay({
+    key_id: envConfig.RAZORPAY_KEY_ID,
+    key_secret: envConfig.RAZORPAY_KEY_SECRET,
+  });
+  private readonly createRazorpayOrderBreaker = createCircuitBreaker<[number], any>({
+    name: "payment.razorpay.create_order",
+    timeoutMs: 7000,
+    resetTimeoutMs: 20000,
+    volumeThreshold: 3,
+    action: (amount) => this.executeCreateRazorpayOrder(amount),
+  });
 
   constructor({
     paymentRepository,
@@ -88,7 +99,7 @@ export class PaymentService {
       return;
     }
 
-    if (existing.status === "SUCCESS") {
+    if (existing.status === "SUCCESS" || existing.status === "REFUNDED") {
       logger.warn(
         `Payment already captured ORDER_ID ${payload.order_id} PAYLOAD PAYMENT_ID ${existing.id}`,
       );
@@ -143,17 +154,21 @@ export class PaymentService {
       return;
     }
 
-    if (existing.status === "SUCCESS") {
+    if (
+      existing.status === "SUCCESS" ||
+      existing.status === "FAILED" ||
+      existing.status === "REFUNDED"
+    ) {
       logger.warn(
-        `Payment already captured ORDER_ID ${payload.order_id} PAYLOAD PAYMENT_ID ${existing.id}`,
+        `Payment already terminal ORDER_ID ${payload.order_id} PAYLOAD PAYMENT_ID ${existing.id}`,
       );
       return;
     }
 
     await this.unitOfWork.withTransaction(async (repos) => {
-      await this.paymentRepository.update({ id: existing.id }, { status: "FAILED" });
+      await repos.paymentRepository.update({ id: existing.id }, { status: "FAILED" });
 
-      await this.paymentEventRepository.create({
+      await repos.paymentEventRepository.create({
         paymentId: existing.id,
         type: WEBHOOK_EVENT_TYPE.PAYMENT_FAILED,
         payload: payload,
@@ -267,11 +282,16 @@ export class PaymentService {
    * Triggered via: internal service call
    */
   private async createRazorpayOrder(amount: number) {
-    const razorpay = new Razorpay({
-      key_id: envConfig.RAZORPAY_KEY_ID,
-      key_secret: envConfig.RAZORPAY_KEY_SECRET,
-    });
-    return razorpay.orders.create({
+    return this.createRazorpayOrderBreaker.fire(amount);
+  }
+
+  /**
+   * Executes the provider order creation call behind the circuit breaker.
+   * Used in: Booking payment-init flow
+   * Triggered via: internal service call
+   */
+  private async executeCreateRazorpayOrder(amount: number) {
+    return this.razorpay.orders.create({
       amount: amount * 100,
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,

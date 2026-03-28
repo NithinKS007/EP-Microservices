@@ -33,14 +33,14 @@ export class WebhookController {
 
     switch (event) {
       case WEBHOOK_EVENT_TYPE.PAYMENT_CAPTURED: {
-        const result = await this.handleEvent(payload, WEBHOOK_EVENT_TYPE.PAYMENT_CAPTURED);
+        const result = await this.handleEvent(payload.payload, WEBHOOK_EVENT_TYPE.PAYMENT_CAPTURED);
         logger.info(`Payment captured flow completed ${result}`);
         sendResponse(res, StatusCodes.OK, result, "Success");
         break;
       }
 
       case WEBHOOK_EVENT_TYPE.PAYMENT_FAILED: {
-        const result = await this.handleEvent(payload, WEBHOOK_EVENT_TYPE.PAYMENT_FAILED);
+        const result = await this.handleEvent(payload.payload, WEBHOOK_EVENT_TYPE.PAYMENT_FAILED);
         logger.info(`Payment failed flow completed ${result}`);
         sendResponse(res, StatusCodes.OK, result, "Success");
         break;

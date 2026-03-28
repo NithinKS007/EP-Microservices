@@ -26,4 +26,6 @@ export interface IBookingRepository extends DatabaseAdapter<
   findByIdempotencyKey(idempotencyKey: string): Promise<BookingModel | null>;
   findBookingsByEventId(eventId: string): Promise<BookingModel[]>;
   bulkCancelBookings(bookingIds: string[]): Promise<number>;
+  findExpiredPendingBookings(limit?: number): Promise<BookingModel[]>;
+  bulkExpireBookings(bookingIds: string[]): Promise<number>;
 }

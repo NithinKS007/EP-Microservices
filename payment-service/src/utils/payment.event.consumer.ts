@@ -1,5 +1,6 @@
 import { KafkaService, logger } from "../../../utils/src";
-import { PaymentRepository } from "../repositories/payment.repository";
+import { BookingServiceGrpcClient, BookingStatus } from "../grpc/booking.client";
+import { EventServiceGrpcClient } from "../grpc/event.client";
 
 interface PaymentEventMessage {
   eventId: string;
@@ -16,17 +17,21 @@ export class PaymentEventConsumer {
   private readonly MAX_RETRIES = 3;
   private readonly BASE_DELAY = 1000;
   private readonly kafkaService: KafkaService;
-  private readonly paymentRepository: PaymentRepository;
+  private readonly bookingServiceGrpcClient: BookingServiceGrpcClient;
+  private readonly eventServiceGrpcClient: EventServiceGrpcClient;
 
   constructor({
     kafkaService,
-    paymentRepository,
+    bookingServiceGrpcClient,
+    eventServiceGrpcClient,
   }: {
     kafkaService: KafkaService;
-    paymentRepository: PaymentRepository;
+    bookingServiceGrpcClient: BookingServiceGrpcClient;
+    eventServiceGrpcClient: EventServiceGrpcClient;
   }) {
     this.kafkaService = kafkaService;
-    this.paymentRepository = paymentRepository;
+    this.bookingServiceGrpcClient = bookingServiceGrpcClient;
+    this.eventServiceGrpcClient = eventServiceGrpcClient;
   }
 
   /**
@@ -38,7 +43,7 @@ export class PaymentEventConsumer {
     await this.handleEvent(
       message,
       { topic: "payment.success", dlqTopic: "payment.success.dlq" },
-      () => this.processPaymentSuccess(message.paymentId),
+      () => this.processPaymentSuccess(message),
     );
   }
 
@@ -51,7 +56,7 @@ export class PaymentEventConsumer {
     await this.handleEvent(
       message,
       { topic: "payment.failed", dlqTopic: "payment.failed.dlq" },
-      () => this.processPaymentFailure(message.paymentId),
+      () => this.processPaymentFailure(message),
     );
   }
 
@@ -90,29 +95,35 @@ export class PaymentEventConsumer {
   }
 
   /**
-   * Updates the payment status to SUCCESS idempotently.
+   * Finalizes booking and seats after payment success.
    * Used in: Payment success consumer
    * Triggered via: Kafka consumer
    */
-  private async processPaymentSuccess(paymentId: string): Promise<void> {
-    const result = await this.paymentRepository.updateManyPaymentsNotSuccess(paymentId);
+  private async processPaymentSuccess(message: PaymentEventMessage): Promise<void> {
+    await this.bookingServiceGrpcClient.updateBookingStatus({
+      bookingId: message.bookingId,
+      status: BookingStatus.BOOKING_STATUS_CONFIRMED,
+    });
 
-    if (result && result.count > 0) {
-      logger.info(`Payment ${paymentId} status updated to SUCCESS`);
-    }
+    await this.eventServiceGrpcClient.confirmSeats({
+      bookingId: message.bookingId,
+    });
   }
 
   /**
-   * Updates the payment status to FAILED idempotently.
+   * Cancels booking and releases seats after payment failure.
    * Used in: Payment failure consumer
    * Triggered via: Kafka consumer
    */
-  private async processPaymentFailure(paymentId: string): Promise<void> {
-    const result = await this.paymentRepository.updateManyPaymentsNotFailed(paymentId);
+  private async processPaymentFailure(message: PaymentEventMessage): Promise<void> {
+    await this.bookingServiceGrpcClient.updateBookingStatus({
+      bookingId: message.bookingId,
+      status: BookingStatus.BOOKING_STATUS_CANCELLED,
+    });
 
-    if (result && result.count > 0) {
-      logger.info(`Payment ${paymentId} status updated to FAILED`);
-    }
+    await this.eventServiceGrpcClient.releaseSeats({
+      bookingId: message.bookingId,
+    });
   }
 
   /**
