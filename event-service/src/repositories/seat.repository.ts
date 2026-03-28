@@ -54,16 +54,39 @@ export class SeatRepository
     return { data, meta: { total, page, limit } };
   }
 
+  /**
+   * Attempts to lock all requested seats atomically enough for booking retries.
+   * Used in: Booking Saga (Step: Seat Lock)
+   * Triggered via: gRPC
+   */
   async lockSeats(
     bookingId: string,
     eventId: string,
     expiryDate: Date,
     seatIds: string[],
-  ): Promise<void> {
-    await this.prisma.seat.updateMany({
+  ): Promise<number> {
+    const result = await this.prisma.seat.updateMany({
       where: { eventId, id: { in: seatIds }, seatStatus: "AVAILABLE" },
       data: { seatStatus: "LOCKED", lockedByBookingId: bookingId, lockExpiresAt: expiryDate },
     });
+
+    if (result.count !== seatIds.length) {
+      await this.prisma.seat.updateMany({
+        where: {
+          eventId,
+          id: { in: seatIds },
+          lockedByBookingId: bookingId,
+          seatStatus: "LOCKED",
+        },
+        data: {
+          seatStatus: "AVAILABLE",
+          lockedByBookingId: null,
+          lockExpiresAt: null,
+        },
+      });
+    }
+
+    return result.count;
   }
 
   async confirmSeats(bookingId: string): Promise<void> {
@@ -109,6 +132,30 @@ export class SeatRepository
         lockExpiresAt: null,
       },
     });
+  }
+
+  async bulkReleaseSeatsForBookings(bookingIds: string[]): Promise<number> {
+    if (bookingIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.prisma.seat.updateMany({
+      where: {
+        lockedByBookingId: {
+          in: bookingIds,
+        },
+        seatStatus: {
+          in: ["LOCKED", "SOLD"],
+        },
+      },
+      data: {
+        seatStatus: "AVAILABLE",
+        lockedByBookingId: null,
+        lockExpiresAt: null,
+      },
+    });
+
+    return result.count;
   }
 
   async countSoldSeats(eventId: string): Promise<number> {

@@ -27,25 +27,53 @@ export class BookingService {
     this.kafkaService = kafkaService;
   }
 
-  async create({ eventId, seats, totalAmount, userId }: CreateBookingDto) {
-    if (!eventId || !seats || !totalAmount || !userId || !seats.length)
+  /**
+   * Creates a booking and publishes the booking-created event once.
+   * Used in: Booking create flow
+   * Triggered via: REST
+   */
+  async create(
+    { eventId, seats, totalAmount, userId }: CreateBookingDto,
+    idempotencyKey?: string,
+  ) {
+    if (!eventId || !seats || totalAmount === undefined || totalAmount === null || !userId || !seats.length)
       throw new ValidationError("Missing required fields");
 
-    const booking = await this.bookingRepository.create({
-      userId,
-      eventId,
-      status: "PENDING",
-      totalAmount,
-      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
-      bookingSeats: {
-        createMany: {
-          data: seats.map((s) => ({
-            seatId: s.id,
-            price: s.price,
-          })),
+    if (idempotencyKey) {
+      const existingBooking = await this.bookingRepository.findByIdempotencyKey(idempotencyKey);
+      if (existingBooking) {
+        return existingBooking;
+      }
+    }
+
+    let booking;
+
+    try {
+      booking = await this.bookingRepository.create({
+        userId,
+        eventId,
+        status: "PENDING",
+        totalAmount,
+        expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+        idempotencyKey,
+        bookingSeats: {
+          createMany: {
+            data: seats.map((s) => ({
+              seatId: s.id,
+              price: s.price,
+            })),
+          },
         },
-      },
-    });
+      });
+    } catch (err) {
+      if (idempotencyKey) {
+        const existingBooking = await this.bookingRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingBooking) {
+          return existingBooking;
+        }
+      }
+      throw err;
+    }
 
     await this.kafkaService.publishMessage({
       topic: "booking.created",
@@ -59,6 +87,11 @@ export class BookingService {
     return booking;
   }
 
+  /**
+   * Updates the stored total amount for a booking.
+   * Used in: Booking internal sync flow
+   * Triggered via: gRPC
+   */
   async updateBookingAmount(bookingId: string, amount: number) {
     if (!bookingId || !amount) throw new ValidationError("Missing required fields");
     const booking = await this.bookingRepository.update({ id: bookingId }, { totalAmount: amount });
@@ -70,6 +103,11 @@ export class BookingService {
     };
   }
 
+  /**
+   * Updates a booking lifecycle status.
+   * Used in: Booking Saga / Cancel Event Saga
+   * Triggered via: gRPC
+   */
   async updateBookingStatus(
     bookingId: string,
     status: "PENDING" | "PAYMENT_INITIATED" | "CONFIRMED" | "CANCELLED" | "EXPIRED",
@@ -84,6 +122,11 @@ export class BookingService {
     };
   }
 
+  /**
+   * Finds a single booking by id.
+   * Used in: Internal booking lookup flow
+   * Triggered via: gRPC
+   */
   async findBooking(bookingId: string) {
     if (!bookingId) throw new ValidationError("Missing required fields");
     const booking = await this.bookingRepository.findById(bookingId);
@@ -94,6 +137,11 @@ export class BookingService {
     };
   }
 
+  /**
+   * Lists all bookings that belong to one event.
+   * Used in: Cancel Event Saga
+   * Triggered via: gRPC
+   */
   async findBookingsByEvent(eventId: string) {
     if (!eventId) throw new ValidationError("Missing required fields");
     const bookings = await this.bookingRepository.findBookingsByEventId(eventId);
@@ -101,5 +149,19 @@ export class BookingService {
       ...booking,
       totalAmount: Number(booking.totalAmount),
     }));
+  }
+
+  /**
+   * Cancels multiple bookings while skipping already terminal ones.
+   * Used in: Cancel Event Saga (Step: Booking Service)
+   * Triggered via: gRPC
+   */
+  async bulkCancelBookings(bookingIds: string[]) {
+    if (!bookingIds.length) {
+      return { affectedCount: 0 };
+    }
+
+    const affectedCount = await this.bookingRepository.bulkCancelBookings(bookingIds);
+    return { affectedCount };
   }
 }

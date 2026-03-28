@@ -8,12 +8,19 @@ import {
   ConfirmSeatsResponse,
   ReleaseSeatsRequest,
   ReleaseSeatsResponse,
+  BulkReleaseSeatsRequest,
+  BulkReleaseSeatsResponse,
+  MarkEventCancelledRequest,
+  MarkEventCancelledResponse,
 } from "../../../utils/src/index";
+import { EventService } from "../services/event.service";
 
 export class EventGrpcController {
   private readonly seatService: SeatService;
-  constructor({ seatService }: { seatService: SeatService }) {
+  private readonly eventService: EventService;
+  constructor({ seatService, eventService }: { seatService: SeatService; eventService: EventService }) {
     this.seatService = seatService;
+    this.eventService = eventService;
   }
 
   lockSeats(
@@ -59,6 +66,39 @@ export class EventGrpcController {
         callback(null, {
           success: true,
           message: "Seats released successfully",
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  bulkReleaseSeats(
+    call: ServerUnaryCall<BulkReleaseSeatsRequest, BulkReleaseSeatsResponse>,
+    callback: SendUnaryData<BulkReleaseSeatsResponse>,
+  ) {
+    const { bookingIds } = call.request;
+    this.eventService
+      .bulkReleaseSeatsForBookings(bookingIds)
+      .then((result) =>
+        callback(null, {
+          success: true,
+          message: "Seats released successfully",
+          affectedCount: result.affectedCount,
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  markEventCancelled(
+    call: ServerUnaryCall<MarkEventCancelledRequest, MarkEventCancelledResponse>,
+    callback: SendUnaryData<MarkEventCancelledResponse>,
+  ) {
+    const { eventId } = call.request;
+    this.eventService
+      .markEventCancelledFromSaga(eventId)
+      .then(() =>
+        callback(null, {
+          success: true,
+          message: "Event marked as cancelled successfully",
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

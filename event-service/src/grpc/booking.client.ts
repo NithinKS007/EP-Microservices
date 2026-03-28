@@ -2,6 +2,8 @@ import { envConfig } from "../config/env.config";
 import { createGrpcClient, fromGrpcError } from "../../../utils/src";
 import {
   BookingServiceClient,
+  BulkCancelBookingsRequest,
+  BulkCancelBookingsResponse,
   FindBookingsByEventRequest,
   FindBookingsByEventResponse,
   UpdateBookingStatusRequest,
@@ -26,6 +28,15 @@ export class BookingServiceGrpcClient {
   updateBookingStatus(data: UpdateBookingStatusRequest): Promise<UpdateBookingStatusResponse> {
     return new Promise((resolve, reject) => {
       this.client.updateBookingStatus(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  bulkCancelBookings(data: BulkCancelBookingsRequest): Promise<BulkCancelBookingsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.bulkCancelBookings(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });

@@ -8,6 +8,8 @@ service EventService {
   rpc LockSeats(LockSeatsRequest) returns (LockSeatsResponse);
   rpc ConfirmSeats(ConfirmSeatsRequest) returns (ConfirmSeatsResponse);
   rpc ReleaseSeats(ReleaseSeatsRequest) returns (ReleaseSeatsResponse);
+  rpc BulkReleaseSeats(BulkReleaseSeatsRequest) returns (BulkReleaseSeatsResponse);
+  rpc MarkEventCancelled(MarkEventCancelledRequest) returns (MarkEventCancelledResponse);
 }
 
 message LockSeatsRequest {
@@ -36,6 +38,25 @@ message ReleaseSeatsRequest {
 }
 
 message ReleaseSeatsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message BulkReleaseSeatsRequest {
+  repeated string booking_ids = 1;
+}
+
+message BulkReleaseSeatsResponse {
+  bool success = 1;
+  string message = 2;
+  int32 affected_count = 3;
+}
+
+message MarkEventCancelledRequest {
+  string event_id = 1;
+}
+
+message MarkEventCancelledResponse {
   bool success = 1;
   string message = 2;
 }

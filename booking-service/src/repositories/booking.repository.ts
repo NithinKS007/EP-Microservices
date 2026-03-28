@@ -19,10 +19,51 @@ export class BookingRepository
     this.prisma = prisma;
   }
 
+  /**
+   * Finds an existing booking by idempotency key.
+   * Used in: Booking REST create flow
+   * Triggered via: REST
+   */
+  async findByIdempotencyKey(idempotencyKey: string): Promise<TModel | null> {
+    return await this.prisma.booking.findUnique({
+      where: { idempotencyKey },
+    });
+  }
+
+  /**
+   * Lists bookings for a given event.
+   * Used in: Cancel Event Saga
+   * Triggered via: gRPC
+   */
   async findBookingsByEventId(eventId: string): Promise<TModel[]> {
     return await this.prisma.booking.findMany({
       where: { eventId },
       orderBy: { createdAt: "asc" },
     });
+  }
+
+  /**
+   * Cancels non-terminal bookings in bulk.
+   * Used in: Cancel Event Saga (Step: Booking Service)
+   * Triggered via: gRPC
+   */
+  async bulkCancelBookings(bookingIds: string[]): Promise<number> {
+    if (bookingIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.prisma.booking.updateMany({
+      where: {
+        id: { in: bookingIds },
+        status: {
+          notIn: ["CANCELLED", "EXPIRED"],
+        },
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
+
+    return result.count;
   }
 }

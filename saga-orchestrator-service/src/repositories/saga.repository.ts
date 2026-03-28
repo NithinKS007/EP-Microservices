@@ -12,7 +12,17 @@ export class SagaRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements ISagaRepository
 {
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
+
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.saga));
+    this.prisma = prisma;
+  }
+
+  async findByTypeAndReferenceId(sagaType: string, referenceId: string): Promise<SagaModel | null> {
+    return await this.prisma.saga.findFirst({
+      where: { sagaType, referenceId },
+      orderBy: { createdAt: "desc" },
+    });
   }
 }

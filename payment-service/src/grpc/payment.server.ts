@@ -7,6 +7,8 @@ import {
   FindPaymentsByBookingIdsResponse,
   UpdatePaymentStatusRequest,
   UpdatePaymentStatusResponse,
+  BulkRefundPaymentsRequest,
+  BulkRefundPaymentsResponse,
   PaymentStatus as GrpcPaymentStatus,
 } from "../../../utils/src/index";
 import { ServerUnaryCall, SendUnaryData } from "../../../utils/src/index";
@@ -72,6 +74,25 @@ export class PaymentGrpcController {
         callback(null, {
           success: true,
           message: "Payment status updated successfully",
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  bulkRefundPayments(
+    call: ServerUnaryCall<BulkRefundPaymentsRequest, BulkRefundPaymentsResponse>,
+    callback: SendUnaryData<BulkRefundPaymentsResponse>,
+  ): void {
+    const { bookingIds } = call.request;
+    this.paymentService
+      .bulkRefundPayments(bookingIds)
+      .then((result) =>
+        callback(null, {
+          success: true,
+          message: "Payments reconciled successfully",
+          refundedCount: result.refundedCount,
+          failedCount: result.failedCount,
+          skippedCount: result.skippedCount,
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

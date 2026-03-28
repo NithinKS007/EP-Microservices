@@ -1,6 +1,8 @@
 import { envConfig } from "../config/env.config";
 import { createGrpcClient, fromGrpcError } from "../../../utils/src";
 import {
+  BulkRefundPaymentsRequest,
+  BulkRefundPaymentsResponse,
   FindPaymentsByBookingIdsRequest,
   FindPaymentsByBookingIdsResponse,
   PaymentServiceClient,
@@ -28,6 +30,15 @@ export class PaymentServiceGrpcClient {
   updatePaymentStatus(data: UpdatePaymentStatusRequest): Promise<UpdatePaymentStatusResponse> {
     return new Promise((resolve, reject) => {
       this.client.updatePaymentStatus(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  bulkRefundPayments(data: BulkRefundPaymentsRequest): Promise<BulkRefundPaymentsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.bulkRefundPayments(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });

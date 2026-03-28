@@ -30,6 +30,12 @@ export class PaymentService {
     this.unitOfWork = unitOfWork;
     this.kafkaService = kafkaService;
   }
+
+  /**
+   * Creates a payment initiation record and provider order.
+   * Used in: Booking payment-init flow
+   * Triggered via: REST / gRPC
+   */
   async create({ amount, bookingId, currency, provider, userId, providerRef }: CreatePaymentDto) {
     if (provider !== "RAZORPAY") {
       throw new ValidationError("Unsupported provider,Please try again later");
@@ -56,6 +62,11 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Handles successful payment webhooks and publishes the success outbox event.
+   * Used in: Payment webhook success flow
+   * Triggered via: REST
+   */
   async handlePaymentCaptured(payload: {
     id: string;
     amount: number;
@@ -113,6 +124,11 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Handles failed payment webhooks and publishes the failure outbox event.
+   * Used in: Payment webhook failure flow
+   * Triggered via: REST
+   */
   async handlePaymentFailed(payload: {
     id: string;
     amount: number;
@@ -163,6 +179,11 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Finds payments for a set of booking ids.
+   * Used in: Cancel Event Saga lookup
+   * Triggered via: gRPC
+   */
   async findPaymentsByBookingIds(bookingIds: string[]) {
     if (!bookingIds.length) {
       return [];
@@ -175,6 +196,11 @@ export class PaymentService {
     }));
   }
 
+  /**
+   * Updates one payment status with transition validation.
+   * Used in: Internal payment reconciliation flow
+   * Triggered via: gRPC
+   */
   async updatePaymentStatus(paymentId: string, status: PaymentStatus) {
     if (!paymentId || !status) {
       throw new ValidationError("Missing required fields");
@@ -211,6 +237,35 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Reconciles payments in bulk for a cancelled event.
+   * Used in: Cancel Event Saga (Step: Payment Service)
+   * Triggered via: gRPC
+   */
+  async bulkRefundPayments(bookingIds: string[]) {
+    if (!bookingIds.length) {
+      return {
+        refundedCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+      };
+    }
+
+    const existingPayments = await this.paymentRepository.findPaymentsByBookingIds(bookingIds);
+    const { refundedCount, failedCount } = await this.paymentRepository.bulkRefundPayments(bookingIds);
+
+    return {
+      refundedCount,
+      failedCount,
+      skippedCount: existingPayments.length - refundedCount - failedCount,
+    };
+  }
+
+  /**
+   * Creates a provider order before the payment is attempted.
+   * Used in: Booking payment-init flow
+   * Triggered via: internal service call
+   */
   private async createRazorpayOrder(amount: number) {
     const razorpay = new Razorpay({
       key_id: envConfig.RAZORPAY_KEY_ID,

@@ -7,6 +7,7 @@ interface Env {
   DATABASE_URL: string;
   BOOKING_SERVICE_URL_GRPC: string;
   PAYMENT_SERVICE_URL_GRPC: string;
+  SAGA_SERVICE_URL_GRPC: string;
 
   KAFKA_BROKERS: string;
   KAFKA_CLIENT_ID: string;
@@ -25,6 +26,7 @@ export const envConfig: Env = {
     process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/postgres",
   BOOKING_SERVICE_URL_GRPC: process.env.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   PAYMENT_SERVICE_URL_GRPC: process.env.PAYMENT_SERVICE_URL_GRPC || "payment:50054",
+  SAGA_SERVICE_URL_GRPC: process.env.SAGA_SERVICE_URL_GRPC || "saga-orchestrator:50055",
 
   KAFKA_BROKERS: process.env.KAFKA_BROKERS || "localhost:9092",
   KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID || "event-service",

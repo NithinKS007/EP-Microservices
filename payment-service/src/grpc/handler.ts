@@ -8,4 +8,5 @@ export const handlers: GrpcHandler = {
   createPayment: controller.createPayment.bind(controller),
   findPaymentsByBookingIds: controller.findPaymentsByBookingIds.bind(controller),
   updatePaymentStatus: controller.updatePaymentStatus.bind(controller),
+  bulkRefundPayments: controller.bulkRefundPayments.bind(controller),
 };

@@ -68,4 +68,37 @@ export class PaymentRepository
       orderBy: { createdAt: "asc" },
     });
   }
+
+  async bulkRefundPayments(
+    bookingIds: string[],
+  ): Promise<{ refundedCount: number; failedCount: number }> {
+    if (bookingIds.length === 0) {
+      return { refundedCount: 0, failedCount: 0 };
+    }
+
+    const refunded = await this.prisma.payment.updateMany({
+      where: {
+        bookingId: { in: bookingIds },
+        status: "SUCCESS",
+      },
+      data: {
+        status: "REFUNDED",
+      },
+    });
+
+    const failed = await this.prisma.payment.updateMany({
+      where: {
+        bookingId: { in: bookingIds },
+        status: "INITIATED",
+      },
+      data: {
+        status: "FAILED",
+      },
+    });
+
+    return {
+      refundedCount: refunded.count,
+      failedCount: failed.count,
+    };
+  }
 }

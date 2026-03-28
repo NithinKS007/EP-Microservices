@@ -14,6 +14,7 @@ import { EventService } from "./services/event.service";
 import { EventGrpcController } from "./grpc/event.server";
 import { BookingServiceGrpcClient } from "./grpc/booking.client";
 import { PaymentServiceGrpcClient } from "./grpc/payment.client";
+import { SagaServiceGrpcClient } from "./grpc/saga.client";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -62,6 +63,7 @@ container.register({
   eventGrpcController: asClass(EventGrpcController).scoped(),
   bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
   paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
+  sagaServiceGrpcClient: asClass(SagaServiceGrpcClient).scoped(),
 });
 
 export { container };

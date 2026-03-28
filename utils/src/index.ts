@@ -27,6 +27,8 @@ export {
 } from "./grpc/generated/user/v1/user";
 
 export {
+  BulkCancelBookingsRequest,
+  BulkCancelBookingsResponse,
   FindBookingRequest,
   FindBookingResponse,
   FindBookingsByEventRequest,
@@ -42,8 +44,12 @@ export {
 } from "./grpc/generated/booking/v1/booking";
 
 export {
+  BulkReleaseSeatsRequest,
+  BulkReleaseSeatsResponse,
   LockSeatsRequest,
   LockSeatsResponse,
+  MarkEventCancelledRequest,
+  MarkEventCancelledResponse,
   ConfirmSeatsRequest,
   ConfirmSeatsResponse,
   ReleaseSeatsRequest,
@@ -54,6 +60,8 @@ export {
 } from "./grpc/generated/event/v1/event";
 
 export {
+  BulkRefundPaymentsRequest,
+  BulkRefundPaymentsResponse,
   CreatePaymentRequest,
   CreatePaymentResponse,
   FindPaymentsByBookingIdsRequest,
@@ -65,6 +73,14 @@ export {
   PaymentServiceService,
   PaymentStatus,
 } from "./grpc/generated/payment/v1/payment";
+
+export {
+  SagaServiceClient,
+  SagaServiceServer,
+  SagaServiceService,
+  StartCancelEventSagaRequest,
+  StartCancelEventSagaResponse,
+} from "./grpc/generated/saga/v1/saga";
 
 export { SendUnaryData, ServerUnaryCall } from "./grpc/types";
 export { toGrpcError, fromGrpcError } from "./grpc/grpc.error.mapper";

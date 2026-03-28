@@ -37,6 +37,11 @@ export class AuthService {
     this.refreshTokenRepository = refreshTokenRepository;
   }
 
+  /**
+   * Registers a new end user after checking email uniqueness.
+   * Used in: Auth signup flow
+   * Triggered via: REST
+   */
   async signup(data: {
     name: string;
     email: string;
@@ -59,6 +64,11 @@ export class AuthService {
     });
   }
 
+  /**
+   * Signs a user in, issues tokens, and stores a refresh token record.
+   * Used in: Auth signin flow
+   * Triggered via: REST
+   */
   async signin(data: {
     email: string;
     password: string;
@@ -109,6 +119,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Rotates refresh tokens after validating device, token state, and expiry.
+   * Used in: Auth refresh-token flow
+   * Triggered via: REST
+   */
   async refreshToken(data: {
     refreshToken: string;
     userAgent: string;
@@ -159,6 +174,11 @@ export class AuthService {
     return { accessToken, refreshToken: newRefreshToken };
   }
 
+  /**
+   * Revokes refresh tokens for the current user session.
+   * Used in: Auth signout flow
+   * Triggered via: REST
+   */
   async signout(data: { refreshToken: string }): Promise<void> {
     const { refreshToken } = data;
 

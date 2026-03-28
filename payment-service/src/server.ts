@@ -7,8 +7,7 @@ import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startPaymentGrpcServer } from "./grpc/start.server";
 import { OutboxWorker } from "./utils/outbox.worker";
-import { PaymentSuccessConsumer } from "./utils/payment.success.consumer";
-import { PaymentFailedConsumer } from "./utils/payment.failed.consumer";
+import { PaymentEventConsumer } from "./utils/payment.event.consumer";
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -59,17 +58,16 @@ const startServer = async () => {
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
 
-      const successConsumer = container.resolve<PaymentSuccessConsumer>("paymentSuccessConsumer");
-      const failedConsumer = container.resolve<PaymentFailedConsumer>("paymentFailedConsumer");
+      const paymentEventConsumer = container.resolve<PaymentEventConsumer>("paymentEventConsumer");
 
       await kafkaService.consumeEvents([
         {
           topic: "payment.success",
-          handler: successConsumer.handle.bind(successConsumer),
+          handler: paymentEventConsumer.handleSuccess.bind(paymentEventConsumer),
         },
         {
           topic: "payment.failed",
-          handler: failedConsumer.handle.bind(failedConsumer),
+          handler: paymentEventConsumer.handleFailed.bind(paymentEventConsumer),
         },
       ]);
     }

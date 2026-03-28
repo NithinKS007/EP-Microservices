@@ -22,4 +22,6 @@ export interface ISagaRepository extends DatabaseAdapter<
   SagaCreateData,
   SagaUpdateData,
   SagaWhere
-> {}
+> {
+  findByTypeAndReferenceId(sagaType: string, referenceId: string): Promise<SagaModel | null>;
+}

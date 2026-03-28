@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package saga.v1;
+
+service SagaService {
+  rpc StartCancelEventSaga(StartCancelEventSagaRequest) returns (StartCancelEventSagaResponse);
+}
+
+message StartCancelEventSagaRequest {
+  string event_id = 1;
+}
+
+message StartCancelEventSagaResponse {
+  bool success = 1;
+  string message = 2;
+  string saga_id = 3;
+  string status = 4;
+}

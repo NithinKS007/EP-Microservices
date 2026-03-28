@@ -9,10 +9,18 @@ export class BookingController {
     this.bookingService = bookingService;
   }
 
+  /**
+   * Creates a booking request and forwards the idempotency key when present.
+   * Used in: Booking create flow
+   * Triggered via: REST
+   */
   async create(req: AuthReq, res: Response): Promise<void> {
-    const data = await validateDto(CreateBookingDto, {...req.body, userId: req?.user?.id});
-    // const idempotencyKey = req.headers['idempotency-key'];
-    await this.bookingService.create(data);
+    const data = await validateDto(CreateBookingDto, { ...req.body, userId: req?.user?.id });
+    const rawIdempotencyKey = req.headers["idempotency-key"];
+    const idempotencyKey =
+      typeof rawIdempotencyKey === "string" ? rawIdempotencyKey.trim() : undefined;
+
+    await this.bookingService.create(data, idempotencyKey || undefined);
     sendResponse(res, StatusCodes.Created, null, "Booking created successfully");
   }
 }

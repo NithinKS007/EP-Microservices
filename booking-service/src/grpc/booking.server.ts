@@ -5,6 +5,8 @@ import {
   FindBookingResponse,
   FindBookingsByEventRequest,
   FindBookingsByEventResponse,
+  BulkCancelBookingsRequest,
+  BulkCancelBookingsResponse,
   UpdateBookingStatusRequest,
   UpdateBookingStatusResponse,
   UpdateBookingAmountRequest,
@@ -52,6 +54,23 @@ export class BookingGrpcController {
             ...booking,
             status: this.mapBookingStatusToGrpc(booking.status),
           })),
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  bulkCancelBookings(
+    call: ServerUnaryCall<BulkCancelBookingsRequest, BulkCancelBookingsResponse>,
+    callback: SendUnaryData<BulkCancelBookingsResponse>,
+  ): void {
+    const { bookingIds } = call.request;
+    this.bookingService
+      .bulkCancelBookings(bookingIds)
+      .then((result) =>
+        callback(null, {
+          success: true,
+          message: "Bookings cancelled successfully",
+          affectedCount: result.affectedCount,
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

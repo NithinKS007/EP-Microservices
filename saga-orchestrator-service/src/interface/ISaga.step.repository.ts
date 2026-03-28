@@ -22,4 +22,7 @@ export interface ISagaStepRepository extends DatabaseAdapter<
   SagaStepCreateData,
   SagaStepUpdateData,
   SagaStepWhere
-> {}
+> {
+  findBySagaId(sagaId: string): Promise<SagaStepModel[]>;
+  resetRetryableSteps(sagaId: string): Promise<void>;
+}

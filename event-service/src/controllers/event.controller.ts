@@ -43,7 +43,7 @@ export class EventController {
 
   async cancelEvent(req: AuthReq, res: Response): Promise<void> {
     const { id } = req.params;
-    const event = await this.eventService.cancelEvent(id);
-    sendResponse(res, StatusCodes.OK, event, "Event cancelled successfully");
+    const saga = await this.eventService.cancelEvent(id);
+    sendResponse(res, StatusCodes.OK, saga, "Event cancellation saga started successfully");
   }
 }

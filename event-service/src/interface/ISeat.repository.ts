@@ -64,7 +64,7 @@ export interface ISeatRepository extends DatabaseAdapter<
     eventId: string,
     expiryDate: Date,
     seatNumbers: string[],
-  ): Promise<void>;
+  ): Promise<number>;
 
   /**
    * Confirm seats
@@ -87,6 +87,7 @@ export interface ISeatRepository extends DatabaseAdapter<
    * Used when an admin cancels an event and related bookings must be unwound.
    */
   resetSeatsForBooking(bookingId: string): Promise<void>;
+  bulkReleaseSeatsForBookings(bookingIds: string[]): Promise<number>;
 
   /**
    * Count sold seats

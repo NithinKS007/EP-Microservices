@@ -1,6 +1,10 @@
 import { CreateSeatsDto, GetSeatsQueryDto } from "./../dtos/seat.dtos";
 import { ISeatRepository } from "./../interface/ISeat.repository";
-import { NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "../../../utils/src/error.handling.middleware";
 import { IEventRepository } from "./../interface/IEvent.repository";
 import { UnitOfWork } from "./../repositories/unity.of.work";
 
@@ -22,6 +26,11 @@ export class SeatService {
     this.unitOfWork = unitOfWork;
   }
 
+  /**
+   * Creates seats for an active event.
+   * Used in: Event seat setup flow
+   * Triggered via: REST
+   */
   async createSeats(data: CreateSeatsDto) {
     const { eventId, seats } = data;
 
@@ -66,6 +75,11 @@ export class SeatService {
     });
   }
 
+  /**
+   * Lists seats for an event with pagination.
+   * Used in: Event seat read flow
+   * Triggered via: REST
+   */
   async findSeatsWithPagination({ eventId, limit, page, seatStatus, seatTier }: GetSeatsQueryDto) {
     if (page < 1 || limit < 1) {
       throw new ValidationError("Invalid pagination parameters");
@@ -85,6 +99,11 @@ export class SeatService {
     });
   }
 
+  /**
+   * Locks all requested seats or fails the request without partial locks.
+   * Used in: Booking Saga (Step: Seat Lock)
+   * Triggered via: gRPC
+   */
   async lockSeats({
     bookingId,
     eventId,
@@ -113,13 +132,28 @@ export class SeatService {
         `The following seats are already booked or temporarily unavailable: ${seats}. Please select different seats and try again.`,
       );
     }
-    return await this.seatRepository.lockSeats(bookingId, eventId, expiresAtDate, seatIds);
+    const lockedCount = await this.seatRepository.lockSeats(bookingId, eventId, expiresAtDate, seatIds);
+    if (lockedCount !== seatIds.length) {
+      throw new ConflictError("Failed to lock all requested seats, Please try again later");
+    }
+
+    return;
   }
 
+  /**
+   * Confirms previously locked seats as sold.
+   * Used in: Booking Saga (Step: Confirm Seats)
+   * Triggered via: gRPC
+   */
   async confirmSeats({ bookingId }: { bookingId: string }) {
     return await this.seatRepository.confirmSeats(bookingId);
   }
 
+  /**
+   * Releases locked seats for a booking.
+   * Used in: Booking Saga compensation
+   * Triggered via: gRPC
+   */
   async releaseSeats({ bookingId }: { bookingId: string }) {
     return await this.seatRepository.releaseSeats(bookingId);
   }

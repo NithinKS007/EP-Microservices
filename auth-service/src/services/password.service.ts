@@ -27,6 +27,11 @@ export class PasswordService {
     this.passwordResetTokenRepository = passwordResetTokenRepository;
   }
 
+  /**
+   * Generates and emails a password reset link for an existing user.
+   * Used in: Forgot-password flow
+   * Triggered via: REST
+   */
   async sendResetPassLink(data: { email: string }): Promise<void> {
     const { email } = data;
     if (!email) throw new ValidationError("Email is required");
@@ -60,6 +65,11 @@ export class PasswordService {
     ]);
   }
 
+  /**
+   * Resets a password using a valid one-time reset token.
+   * Used in: Reset-password flow
+   * Triggered via: REST
+   */
   async changePassUsingToken(data: { token: string; password: string }): Promise<void> {
     const { token, password } = data;
 
@@ -98,6 +108,11 @@ export class PasswordService {
     });
   }
 
+  /**
+   * Changes password after verifying the current password for an authenticated user.
+   * Used in: Change-password flow
+   * Triggered via: REST
+   */
   async changePass(data: {
     userId: string;
     currentPassword: string;

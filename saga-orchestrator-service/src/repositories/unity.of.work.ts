@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from "./../generated/prisma/client";
 import { container } from "./../container";
 import { SagaRepository } from "./saga.repository";
 import { SagaStepRepository } from "./saga.step.repository";
+import { OutboxEventRepository } from "./outbox.event.repository";
 
 /**
  * Wraps multiple repository operations inside a single Prisma transaction.
@@ -20,6 +21,7 @@ export class UnitOfWork {
     callback: (repos: {
       sagaRepository: SagaRepository;
       sagaStepRepository: SagaStepRepository;
+      outboxEventRepository: OutboxEventRepository;
     }) => Promise<T>,
   ): Promise<T> {
     return this.prisma.$transaction(
@@ -34,6 +36,8 @@ export class UnitOfWork {
         const repos = {
           sagaRepository: scopedContainer.resolve<SagaRepository>("sagaRepository"),
           sagaStepRepository: scopedContainer.resolve<SagaStepRepository>("sagaStepRepository"),
+          outboxEventRepository:
+            scopedContainer.resolve<OutboxEventRepository>("outboxEventRepository"),
         };
 
         return callback({ ...repos });

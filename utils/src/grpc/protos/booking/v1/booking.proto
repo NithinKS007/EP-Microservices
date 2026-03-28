@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 service BookingService {
   rpc FindBooking(FindBookingRequest) returns (FindBookingResponse);
   rpc FindBookingsByEvent(FindBookingsByEventRequest) returns (FindBookingsByEventResponse);
+  rpc BulkCancelBookings(BulkCancelBookingsRequest) returns (BulkCancelBookingsResponse);
   rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
   rpc UpdateBookingAmount(UpdateBookingAmountRequest) returns (UpdateBookingAmountResponse);
 }
@@ -49,6 +50,16 @@ message FindBookingsByEventResponse {
   bool success = 1;
   string message = 2;
   repeated Booking bookings = 3;
+}
+
+message BulkCancelBookingsRequest {
+  repeated string booking_ids = 1;
+}
+
+message BulkCancelBookingsResponse {
+  bool success = 1;
+  string message = 2;
+  int32 affected_count = 3;
 }
 
 message UpdateBookingStatusRequest {

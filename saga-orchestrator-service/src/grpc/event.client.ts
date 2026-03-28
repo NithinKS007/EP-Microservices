@@ -1,8 +1,12 @@
 import { envConfig } from "../config/env.config";
 import { createGrpcClient, fromGrpcError } from "../../../utils/src";
 import {
+  BulkReleaseSeatsRequest,
+  BulkReleaseSeatsResponse,
   LockSeatsRequest,
   LockSeatsResponse,
+  MarkEventCancelledRequest,
+  MarkEventCancelledResponse,
   ConfirmSeatsRequest,
   ConfirmSeatsResponse,
   ReleaseSeatsRequest,
@@ -37,6 +41,24 @@ export class EventServiceGrpcClient {
   releaseSeats(data: ReleaseSeatsRequest): Promise<ReleaseSeatsResponse> {
     return new Promise((resolve, reject) => {
       this.client.releaseSeats(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  bulkReleaseSeats(data: BulkReleaseSeatsRequest): Promise<BulkReleaseSeatsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.bulkReleaseSeats(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  markEventCancelled(data: MarkEventCancelledRequest): Promise<MarkEventCancelledResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.markEventCancelled(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });

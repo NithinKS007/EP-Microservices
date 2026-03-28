@@ -9,7 +9,11 @@ export class UserService {
     this.userRepository = userRepository;
   }
 
-  // USED IN REST
+  /**
+   * Finds a user by id and removes password before returning.
+   * Used in: User profile read flow
+   * Triggered via: REST
+   */
   async findUserByIdOrThrow(id: string): Promise<
     | (Omit<UserEntity, "password"> & {
         password?: string;
@@ -29,6 +33,11 @@ export class UserService {
     return safeUser;
   }
 
+  /**
+   * Finds a user by id including password for internal flows.
+   * Used in: Auth and password flows
+   * Triggered via: gRPC
+   */
   async findUserById(id: string): Promise<UserEntity | undefined> {
     if (!id) throw new ValidationError("User id is required");
     const user = await this.userRepository.findById(id);
@@ -37,7 +46,11 @@ export class UserService {
     return user ? user : undefined;
   }
 
-  // USED IN GRPC
+  /**
+   * Creates a new user record.
+   * Used in: Auth signup flow
+   * Triggered via: gRPC
+   */
   async createUser(data: { name: string; email: string; password: string }): Promise<void> {
     const { email, password, name } = data;
     if (!email || !password || !name)
@@ -45,9 +58,11 @@ export class UserService {
     await this.userRepository.create({ ...data });
   }
 
-  // DO NOT USER THIS FN IN GRPC THROWING ERROR WHEN
-  // USER NOT FOUND
-  // USED IN GRPC
+  /**
+   * Finds a user by email without throwing when not found.
+   * Used in: Auth signup/signin and password reset flows
+   * Triggered via: gRPC
+   */
   async findUserByEmail(data: { email: string }): Promise<UserEntity | undefined> {
     const { email } = data;
     if (!email) throw new ValidationError("Email is required");
@@ -57,18 +72,32 @@ export class UserService {
     return user ? user : undefined;
   }
 
-  // USED IN GRPC
+  /**
+   * Updates the password field for one user.
+   * Used in: Password reset/change flows
+   * Triggered via: gRPC
+   */
   async updateUserPassword(data: { userId: string; password: string }): Promise<void> {
     const { userId, password } = data;
     if (!userId || !password) throw new ValidationError("User id and password are required");
     await this.userRepository.update({ id: userId }, { password });
   }
 
+  /**
+   * Updates the display name of a user.
+   * Used in: User profile update flow
+   * Triggered via: REST
+   */
   async updateUser(id: string, name: string): Promise<void> {
     if (!id || !name) throw new ValidationError("User id and name are required");
     await this.userRepository.update({ id }, { name });
   }
 
+  /**
+   * Updates the role for a user.
+   * Used in: Admin user-management flow
+   * Triggered via: REST
+   */
   async updateUserRole(id: string, role: "USER" | "ADMIN"): Promise<void> {
     if (!id || !role) throw new ValidationError("User id and role are required");
     await this.userRepository.update({ id }, { role });

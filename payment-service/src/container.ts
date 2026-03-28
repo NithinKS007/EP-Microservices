@@ -9,8 +9,7 @@ import { PaymentGrpcController } from "./grpc/payment.server";
 import { WebhookController } from "./controllers/webhook.controller";
 import { OutboxEventRepository } from "./repositories/outbox.event.repository";
 import { OutboxWorker } from "./utils/outbox.worker";
-import { PaymentSuccessConsumer } from "./utils/payment.success.consumer";
-import { PaymentFailedConsumer } from "./utils/payment.failed.consumer";
+import { PaymentEventConsumer } from "./utils/payment.event.consumer";
 import { CustomMiddleware } from "../../utils/src";
 
 const container = createContainer();
@@ -42,8 +41,7 @@ container.register({
 
   outboxWorker: asClass(OutboxWorker).scoped(),
 
-  paymentSuccessConsumer: asClass(PaymentSuccessConsumer).scoped(),
-  paymentFailedConsumer: asClass(PaymentFailedConsumer).scoped(),
+  paymentEventConsumer: asClass(PaymentEventConsumer).scoped(),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 
