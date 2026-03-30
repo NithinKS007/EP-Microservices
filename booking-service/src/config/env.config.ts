@@ -11,6 +11,7 @@ interface Env {
   KAFKA_ENABLED: string;
 
   EVENT_SERVICE_URL_GRPC: string;
+  PAYMENT_SERVICE_URL_GRPC: string;
 }
 
 export const envConfig: Env = {
@@ -26,4 +27,5 @@ export const envConfig: Env = {
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "false",
   
   EVENT_SERVICE_URL_GRPC: process.env.EVENT_SERVICE_URL_GRPC || "event:50052",
+  PAYMENT_SERVICE_URL_GRPC: process.env.PAYMENT_SERVICE_URL_GRPC || "payment:50052",
 };

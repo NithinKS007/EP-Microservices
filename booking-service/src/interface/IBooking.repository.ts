@@ -1,5 +1,6 @@
 import { Prisma } from "../generated/prisma/client";
 import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
+import { GetBookingsQueryDto } from "./../dtos/booking.dtos";
 
 /**
  * Prisma-backed Booking domain model
@@ -28,4 +29,12 @@ export interface IBookingRepository extends DatabaseAdapter<
   bulkCancelBookings(bookingIds: string[]): Promise<number>;
   findExpiredPendingBookings(limit?: number): Promise<BookingModel[]>;
   bulkExpireBookings(bookingIds: string[]): Promise<number>;
+  findPaginatedBookingsWithSeats(data: GetBookingsQueryDto): Promise<{
+    data: Prisma.BookingGetPayload<{
+      include: {
+        bookingSeats: true;
+      };
+    }>[];
+    meta: { total: number; page: number; limit: number };
+  }>;
 }

@@ -83,10 +83,10 @@ services:
         condition: service_started
       event:
         condition: service_started
-      # booking:
-      #   condition: service_started
-      # payment:
-      #   condition: service_started
+      booking:
+        condition: service_started
+      payment:
+        condition: service_started
     networks:
       - backend
     healthcheck:
@@ -285,7 +285,7 @@ volumes:
   pgdata:
   redis_data:
   kafka_data:
-
+  
 networks:
   backend:
     driver: bridge

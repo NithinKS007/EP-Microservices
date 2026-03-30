@@ -13,6 +13,7 @@ import { OutboxEventRepository } from "./repositories/outbox.event.repository";
 import { OutboxWorker } from "./utils/outbox.worker";
 import { EventServiceGrpcClient } from "./grpc/event.client";
 import { BookingExpiryJob } from "./utils/booking.expiry.job";
+import { PaymentServiceGrpcClient } from "./grpc/payment.client";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -43,6 +44,7 @@ container.register({
   bookingGrpcController: asClass(BookingGrpcController).scoped(),
   outboxWorker: asClass(OutboxWorker).scoped(),
   eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
+  paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
   cronRunner: asClass(CronRunner).scoped(),
   bookingExpiryJob: asClass(BookingExpiryJob).scoped(),
   customMiddleware: asClass(CustomMiddleware).scoped(),

@@ -4,6 +4,8 @@ import {
   BulkReleaseSeatsRequest,
   BulkReleaseSeatsResponse,
   EventServiceClient,
+  FindEventsByIdsWithSeatsRequest,
+  FindEventsByIdsWithSeatsResponse,
 } from "../../../utils/src";
 
 export class EventServiceGrpcClient {
@@ -20,6 +22,20 @@ export class EventServiceGrpcClient {
   bulkReleaseSeats(data: BulkReleaseSeatsRequest): Promise<BulkReleaseSeatsResponse> {
     return new Promise((resolve, reject) => {
       this.client.bulkReleaseSeats(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  /**
+   * Finds events by ids with seats.
+   * Used in: Booking finding flow
+   * Triggered via: gRPC
+   */
+  findEventsByIdsWithSeats(data: FindEventsByIdsWithSeatsRequest): Promise<FindEventsByIdsWithSeatsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.findEventsByIdsWithSeats(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });

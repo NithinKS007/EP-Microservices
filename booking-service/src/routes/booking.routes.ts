@@ -11,5 +11,6 @@ const customMiddleware = container.resolve<CustomMiddleware>("CustomMiddleware")
 router.use(customMiddleware.context.bind(customMiddleware));
 router.use(customMiddleware.requestLogger.bind(customMiddleware));  
 router.post("/",customMiddleware.authorize(["USER"]), asyncHandler(bookingController.create.bind(bookingController)));
+router.get("/",customMiddleware.authorize(["USER","ADMIN"]), asyncHandler(bookingController.findBookingsWithPagination.bind(bookingController)));
 
 export default router

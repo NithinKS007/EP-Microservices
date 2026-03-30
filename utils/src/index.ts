@@ -59,6 +59,13 @@ export {
   EventServiceClient,
   EventServiceServer,
   EventServiceService,
+  FindEventsByIdsWithSeatsRequest,
+  FindEventsByIdsWithSeatsResponse,
+  EventStatus,
+  EventWithSeats,
+  Seat,
+  SeatStatus,
+  SeatTier
 } from "./grpc/generated/event/v1/event";
 
 export {

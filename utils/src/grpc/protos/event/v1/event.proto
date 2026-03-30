@@ -10,6 +10,66 @@ service EventService {
   rpc ReleaseSeats(ReleaseSeatsRequest) returns (ReleaseSeatsResponse);
   rpc BulkReleaseSeats(BulkReleaseSeatsRequest) returns (BulkReleaseSeatsResponse);
   rpc MarkEventCancelled(MarkEventCancelledRequest) returns (MarkEventCancelledResponse);
+  rpc FindEventsByIdsWithSeats(FindEventsByIdsWithSeatsRequest) returns (FindEventsByIdsWithSeatsResponse);
+}
+
+message EventWithSeats {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string venue_name = 4;
+  google.protobuf.Timestamp event_date = 5;
+  EventStatus status = 6;
+
+  repeated Seat seats = 7;
+
+  optional google.protobuf.Timestamp created_at = 8;
+  optional google.protobuf.Timestamp updated_at = 9;
+}
+
+message Seat {
+  string id = 1;
+  string event_id = 2;
+  string seat_number = 3;
+  SeatTier seat_tier = 4;
+  double price = 5;
+
+  SeatStatus seat_status = 6;
+  string locked_by_booking_id = 7;
+  google.protobuf.Timestamp lock_expires_at = 8;
+
+  optional google.protobuf.Timestamp created_at = 9;
+  optional google.protobuf.Timestamp updated_at = 10;
+}
+
+enum EventStatus {
+  EVENT_STATUS_UNSPECIFIED = 0;
+  EVENT_STATUS_ACTIVE = 1;
+  EVENT_STATUS_CANCELLED = 2;
+}
+
+enum SeatStatus {
+  SEAT_STATUS_UNSPECIFIED = 0;
+  SEAT_STATUS_AVAILABLE = 1;
+  SEAT_STATUS_LOCKED = 2;
+  SEAT_STATUS_SOLD = 3;
+}
+
+enum SeatTier {
+  SEAT_TIER_UNSPECIFIED = 0;
+  SEAT_TIER_VIP = 1;
+  SEAT_TIER_REGULAR = 2;
+  SEAT_TIER_ECONOMY = 3;
+}
+
+message FindEventsByIdsWithSeatsRequest {
+  repeated string event_ids = 1;
+}
+
+message FindEventsByIdsWithSeatsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated EventWithSeats events = 3;
 }
 
 message LockSeatsRequest {

@@ -1,7 +1,8 @@
 import { PrismaClient, Prisma } from "../generated/prisma/client";
 import { PrismaAdapter } from "../../../utils/src/IBase.repository";
 import { BaseRepository } from "./base.repository";
-import { IBookingRepository } from "../interface/IBooking.repository";
+import { BookingModel, IBookingRepository } from "../interface/IBooking.repository";
+import { GetBookingsQueryDto } from "./../dtos/booking.dtos";
 
 type TModel = Prisma.BookingGetPayload<Prisma.BookingFindUniqueArgs>;
 type TCreate = Prisma.BookingCreateArgs["data"];
@@ -108,5 +109,45 @@ export class BookingRepository
     });
 
     return result.count;
+  }
+
+  async findPaginatedBookingsWithSeats({ limit, page, eventId, userId }: GetBookingsQueryDto): Promise<{
+    data: Prisma.BookingGetPayload<{
+      include: {
+        bookingSeats: true;
+      };
+    }>[];
+    meta: { total: number; page: number; limit: number };
+  }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: {
+          ...(eventId && { eventId }),
+          ...(userId && { userId }),
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip,
+        include: {
+          bookingSeats: true,
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          ...(eventId && { eventId }),
+          ...(userId && { userId }),
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+      },
+    };
   }
 }

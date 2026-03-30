@@ -1,7 +1,7 @@
 import { BookingService } from "./../services/booking.service";
 import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Response } from "express";
-import { CreateBookingDto } from "./../dtos/booking.dtos";
+import { CreateBookingDto, GetBookingsQueryDto } from "./../dtos/booking.dtos";
 
 export class BookingController {
   private readonly bookingService: BookingService;
@@ -22,5 +22,11 @@ export class BookingController {
 
     await this.bookingService.create(data, idempotencyKey || undefined);
     sendResponse(res, StatusCodes.Created, null, "Booking created successfully");
+  }
+
+  async findBookingsWithPagination(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(GetBookingsQueryDto, req.query);
+    const bookings = await this.bookingService.findBookingsWithPagination(data);
+    sendResponse(res, StatusCodes.OK, bookings, "Bookings fetched successfully");
   }
 }
