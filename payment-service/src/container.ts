@@ -13,6 +13,7 @@ import { PaymentEventConsumer } from "./utils/payment.event.consumer";
 import { BookingServiceGrpcClient } from "./grpc/booking.client";
 import { EventServiceGrpcClient } from "./grpc/event.client";
 import { CustomMiddleware } from "../../utils/src";
+import { PaymentController } from "./controllers/payment.controller";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -40,6 +41,7 @@ container.register({
 
   paymentGrpcController: asClass(PaymentGrpcController).scoped(),
   webhookController: asClass(WebhookController).scoped(),
+  paymentController: asClass(PaymentController).scoped(),
   bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
   eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
 

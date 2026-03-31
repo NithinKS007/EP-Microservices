@@ -101,4 +101,12 @@ export class PaymentRepository
       failedCount: failed.count,
     };
   }
+
+  async findByBookingId(bookingId: string): Promise<PaymentModel | null> {
+    return await this.prisma.payment.findFirst({
+      where: {
+        bookingId,
+      },
+    });
+  }
 }

@@ -297,4 +297,19 @@ export class PaymentService {
       receipt: `rcpt_${Date.now()}`,
     });
   }
+
+  async findPaymentByBookingId(bookingId: string) {
+    return this.paymentRepository.findByBookingId(bookingId);
+  }
+
+  async findPayment(id: string) {
+    const payment = await this.paymentRepository.findById(id)
+    if(!payment) {
+      throw new ValidationError("Payment not found")
+    }
+    return {
+      ...payment,
+      amount: Number(payment.amount),
+    }
+  }
 }

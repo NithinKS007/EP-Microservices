@@ -28,4 +28,5 @@ export interface IPaymentRepository extends DatabaseAdapter<
   findByOrderId(orderId: string): Promise<PaymentModel | null>;
   findPaymentsByBookingIds(bookingIds: string[]): Promise<PaymentModel[]>;
   bulkRefundPayments(bookingIds: string[]): Promise<{ refundedCount: number; failedCount: number }>;
+  findByBookingId(bookingId: string): Promise<PaymentModel | null>;
 }

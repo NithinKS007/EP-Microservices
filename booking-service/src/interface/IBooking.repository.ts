@@ -37,4 +37,10 @@ export interface IBookingRepository extends DatabaseAdapter<
     }>[];
     meta: { total: number; page: number; limit: number };
   }>;
+
+  findBookingByIdWithSeats(id: string): Promise<Prisma.BookingGetPayload<{
+    include: {
+      bookingSeats: true;
+    };
+  }> | null>;
 }

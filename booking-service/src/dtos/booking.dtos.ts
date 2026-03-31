@@ -7,6 +7,7 @@ import {
   ValidateNested,
   Max,
   IsOptional,
+  IsNotEmpty,
 } from "class-validator";
 
 import { Type } from "class-transformer";
@@ -57,4 +58,11 @@ export class GetBookingsQueryDto {
   @IsOptional()
   @IsUUID("4", { message: "User ID must be a valid UUID" })
   userId?: string;
+}
+
+export class GetBookingByIdRequestDto {
+  @IsNotEmpty({ message: "Booking ID is required" })
+  @Type(() => String)
+  @IsUUID("4", { message: "Booking ID must be a valid UUID" })
+  id!: string;
 }

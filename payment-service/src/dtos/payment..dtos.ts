@@ -45,3 +45,13 @@ export enum WEBHOOK_EVENT_TYPE {
   PAYMENT_FAILED = "payment.failed",
   PAYMENT_ORPHANED = "payment.orphaned",
 }
+
+export class GetPaymentByIdRequestDto {
+  @IsUUID()
+  id!: string;
+}
+
+export class GetPaymentByBookingIdRequestDto {
+  @IsUUID()
+  id!: string;
+}

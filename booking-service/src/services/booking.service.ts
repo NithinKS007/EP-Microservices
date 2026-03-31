@@ -194,6 +194,11 @@ export class BookingService {
     return { affectedCount };
   }
 
+  /**
+   * Lists all bookings that belong to one user or one event.
+   * Used in: Booking REST read flow
+   * Triggered via: REST
+   */
   async findBookingsWithPagination({ limit, page, eventId, userId }: GetBookingsQueryDto) {
     const bookings = await this.bookingRepository.findPaginatedBookingsWithSeats({
       limit,
@@ -255,23 +260,95 @@ export class BookingService {
               price: Number(bs.price),
               createdAt: bs.createdAt,
               updatedAt: bs.updatedAt,
-              seatDetails:{
+              seatDetails: {
                 seatNumber: seat?.seatNumber,
                 seatTier: seat?.seatTier,
-                seatStatus: seat?.seatStatus
-              }
+                seatStatus: seat?.seatStatus,
+              },
             };
           }) || [],
         // Payment Enrichment
-        payment:{
+        payment: {
           id: payment?.id,
           amount: Number(payment?.amount),
           currency: payment?.currency,
           status: payment?.status,
           provider: payment?.provider,
-          providerRef: payment?.providerRef
+          providerRef: payment?.providerRef,
         },
       };
     });
+  }
+
+  async findBookingByIdWithDetails(id: string) {
+    const booking = await this.bookingRepository.findBookingByIdWithSeats(id);
+
+    if (!booking) {
+      throw new NotFoundError("Booking not found, Please try again later");
+    }
+
+    const [eventDetails, paymentDetails] = await Promise.all([
+      this.eventServiceGrpcClient.findEventsByIdsWithSeats({
+        eventIds: [booking.eventId],
+      }),
+      this.paymentServiceGrpcClient.findPaymentsByBookingIds({
+        bookingIds: [id],
+      }),
+    ]);
+
+    logger.info(`Event details: ${JSON.stringify(eventDetails)}`);
+    logger.info(`Payment details: ${JSON.stringify(paymentDetails)}`);
+
+    const eventMap = new Map((eventDetails.events ?? []).map((e) => [e.id, e]));
+
+    const paymentMap = new Map((paymentDetails.payments ?? []).map((p) => [p.bookingId, p]));
+
+    const event = eventMap.get(booking.eventId);
+    const payment = paymentMap.get(booking.id);
+
+    return {
+      id: booking.id,
+      status: booking.status,
+      totalAmount: Number(booking.totalAmount),
+      expiresAt: booking.expiresAt,
+      createdAt: booking.createdAt,
+      updatedAt: booking.updatedAt,
+
+      event: {
+        name: event?.name,
+        eventDate: event?.eventDate,
+        venueName: event?.venueName,
+        description: event?.description,
+        status: event?.status,
+      },
+
+      bookedSeats:
+        booking.bookingSeats?.map((bs) => {
+          const seat = event?.seats?.find((s) => s.id === bs.seatId);
+
+          return {
+            id: bs.seatId,
+            bookingId: bs.bookingId,
+            price: Number(bs.price),
+            createdAt: bs.createdAt,
+            updatedAt: bs.updatedAt,
+
+            seatDetails: {
+              seatNumber: seat?.seatNumber,
+              seatTier: seat?.seatTier,
+              seatStatus: seat?.seatStatus,
+            },
+          };
+        }) || [],
+
+      payment: {
+        id: payment?.id,
+        amount: payment?.amount ? Number(payment.amount) : 0,
+        currency: payment?.currency,
+        status: payment?.status,
+        provider: payment?.provider,
+        providerRef: payment?.providerRef,
+      },
+    };
   }
 }

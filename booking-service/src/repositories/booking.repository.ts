@@ -111,7 +111,12 @@ export class BookingRepository
     return result.count;
   }
 
-  async findPaginatedBookingsWithSeats({ limit, page, eventId, userId }: GetBookingsQueryDto): Promise<{
+  async findPaginatedBookingsWithSeats({
+    limit,
+    page,
+    eventId,
+    userId,
+  }: GetBookingsQueryDto): Promise<{
     data: Prisma.BookingGetPayload<{
       include: {
         bookingSeats: true;
@@ -149,5 +154,18 @@ export class BookingRepository
         limit,
       },
     };
+  }
+
+  async findBookingByIdWithSeats(id: string): Promise<Prisma.BookingGetPayload<{
+    include: {
+      bookingSeats: true;
+    };
+  }> | null> {
+    return await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        bookingSeats: true,
+      },
+    });
   }
 }
