@@ -1,10 +1,10 @@
 import { PaymentEvent } from "./payment.event.entity";
 
 export enum PaymentStatus {
-  initiated = "initiated",
-  success = "success",
-  failed = "failed",
-  refunded = "refunded",
+  INITIATED = "INITIATED",
+  SUCCESS = "SUCCESS",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
 }
 
 export interface Payment {
@@ -18,9 +18,9 @@ export interface Payment {
   status: PaymentStatus;
 
   provider: string;
-  providerRef?: string;
+  providerRef?: string|null
 
-  paymentEvents?: PaymentEvent[];
+  paymentEvents?: PaymentEvent[]|null[]|undefined[]
 
   createdAt: Date;
   updatedAt: Date;

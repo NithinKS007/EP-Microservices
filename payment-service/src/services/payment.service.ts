@@ -6,8 +6,9 @@ import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
 import { UnitOfWork } from "../repositories/unity.of.work";
-import { PaymentStatus } from "../generated/prisma/client";
+import { PaymentStatus } from "../entity/payment.entity";
 import { UserServiceGrpcClient } from "grpc/user.client";
+import { Payment } from "./../entity/payment.entity";
 
 export class PaymentService {
   private readonly paymentRepository: IPaymentRepository;
@@ -300,7 +301,7 @@ export class PaymentService {
             await this.paymentRepository.update({ id: payment.id }, { status: "REFUNDED" });
 
             // 3. Send email asynchronously (don't await)
-            this.sendRefundEmail(payment);
+            this.sendRefundEmail({...payment, amount: Number(payment.amount),status:PaymentStatus.REFUNDED});
 
             logger.info(`Successfully refunded payment ${payment.id} for booking ${payment.bookingId}`);
             return "REFUNDED";
@@ -331,7 +332,7 @@ export class PaymentService {
   /**
    * Helper to send refund emails asynchronously.
    */
-  private sendRefundEmail(payment: any) {
+  private sendRefundEmail(payment: Payment) {
     this.userServiceGrpcClient
       .findUserById({ userId: payment.userId })
       .then((userRes) => {
