@@ -12,7 +12,8 @@ import { OutboxWorker } from "./utils/outbox.worker";
 import { PaymentEventConsumer } from "./utils/payment.event.consumer";
 import { BookingServiceGrpcClient } from "./grpc/booking.client";
 import { EventServiceGrpcClient } from "./grpc/event.client";
-import { CustomMiddleware } from "../../utils/src";
+import { UserServiceGrpcClient } from "./grpc/user.client";
+import { CustomMiddleware, EmailService } from "../../utils/src";
 import { PaymentController } from "./controllers/payment.controller";
 
 const container = createContainer();
@@ -44,6 +45,14 @@ container.register({
   paymentController: asClass(PaymentController).scoped(),
   bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
   eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
+  userServiceGrpcClient: asClass(UserServiceGrpcClient).scoped(),
+
+  emailService: asClass(EmailService)
+    .scoped()
+    .inject(() => ({
+      emailUser: envConfig.EMAIL_USER,
+      emailPass: envConfig.EMAIL_PASS,
+    })),
 
   outboxWorker: asClass(OutboxWorker).scoped(),
 

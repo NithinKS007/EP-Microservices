@@ -18,6 +18,10 @@ interface Env {
 
   BOOKING_SERVICE_URL_GRPC: string;
   EVENT_SERVICE_URL_GRPC: string;
+  USER_SERVICE_URL_GRPC: string;
+
+  EMAIL_USER: string;
+  EMAIL_PASS: string;
 }
 
 export const envConfig: Env = {
@@ -40,5 +44,8 @@ export const envConfig: Env = {
   
   BOOKING_SERVICE_URL_GRPC: process.env.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   EVENT_SERVICE_URL_GRPC: process.env.EVENT_SERVICE_URL_GRPC || "event:50052",
+  USER_SERVICE_URL_GRPC: process.env.USER_SERVICE_URL_GRPC || "user:50051",
 
+  EMAIL_USER: process.env.EMAIL_USER || "example@gmail.com",
+  EMAIL_PASS: process.env.EMAIL_PASS || "password",
 };

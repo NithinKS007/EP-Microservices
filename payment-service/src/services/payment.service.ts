@@ -1,18 +1,21 @@
 import { ValidationError } from "../../../utils/src/error.handling.middleware";
 import { IPaymentRepository } from "../interface/IPayment.repository";
 import { IPaymentEventRepository } from "../interface/IPayment.event.repository";
-import { codeGenerator, createCircuitBreaker, KafkaService, logger } from "../../../utils/src/index";
+import { codeGenerator, createCircuitBreaker, EmailService, KafkaService, logger } from "../../../utils/src/index";
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
 import { UnitOfWork } from "../repositories/unity.of.work";
 import { PaymentStatus } from "../generated/prisma/client";
+import { UserServiceGrpcClient } from "grpc/user.client";
 
 export class PaymentService {
   private readonly paymentRepository: IPaymentRepository;
   private readonly paymentEventRepository: IPaymentEventRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly kafkaService: KafkaService;
+  private readonly userServiceGrpcClient: UserServiceGrpcClient;
+  private readonly emailService: EmailService;
   private readonly razorpay = new Razorpay({
     key_id: envConfig.RAZORPAY_KEY_ID,
     key_secret: envConfig.RAZORPAY_KEY_SECRET,
@@ -25,21 +28,38 @@ export class PaymentService {
     action: (amount) => this.executeCreateRazorpayOrder(amount),
   });
 
+  private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<
+    [string, number],
+    any
+  >({
+    name: "payment.razorpay.refund",
+    timeoutMs: 7000,
+    resetTimeoutMs: 20000,
+    volumeThreshold: 3,
+    action: (paymentId, amount) => this.executeRefundRazorpayPayment(paymentId, amount),
+  });
+
   constructor({
     paymentRepository,
     paymentEventRepository,
     unitOfWork,
     kafkaService,
+    userServiceGrpcClient,
+    emailService,
   }: {
     paymentRepository: IPaymentRepository;
     paymentEventRepository: IPaymentEventRepository;
     unitOfWork: UnitOfWork;
     kafkaService: KafkaService;
+    userServiceGrpcClient: UserServiceGrpcClient;
+    emailService: EmailService;
   }) {
     this.paymentRepository = paymentRepository;
     this.paymentEventRepository = paymentEventRepository;
     this.unitOfWork = unitOfWork;
     this.kafkaService = kafkaService;
+    this.userServiceGrpcClient = userServiceGrpcClient;
+    this.emailService = emailService;
   }
 
   /**
@@ -267,13 +287,75 @@ export class PaymentService {
     }
 
     const existingPayments = await this.paymentRepository.findPaymentsByBookingIds(bookingIds);
-    const { refundedCount, failedCount } = await this.paymentRepository.bulkRefundPayments(bookingIds);
+
+    // Use Promise.all to handle refunds in parallel and keep variables 'const'
+    const results = await Promise.all(
+      existingPayments.map(async (payment) => {
+        try {
+          if (payment.status === "SUCCESS" && payment.providerRef) {
+            // 1. Trigger real refund via Razorpay API
+            await this.refundRazorpayPaymentBreaker.fire(payment.providerRef, Number(payment.amount));
+
+            // 2. Update DB status
+            await this.paymentRepository.update({ id: payment.id }, { status: "REFUNDED" });
+
+            // 3. Send email asynchronously (don't await)
+            this.sendRefundEmail(payment);
+
+            logger.info(`Successfully refunded payment ${payment.id} for booking ${payment.bookingId}`);
+            return "REFUNDED";
+          } else if (payment.status === "INITIATED") {
+            // No capture happened, just mark as failed
+            await this.paymentRepository.update({ id: payment.id }, { status: "FAILED" });
+            return "FAILED";
+          }
+          return "SKIPPED";
+        } catch (error: any) {
+          logger.error(`Failed to refund payment ${payment.id}: ${error.message}`);
+          return "ERROR";
+        }
+      }),
+    );
+
+    const refundedCount = results.filter((r) => r === "REFUNDED").length;
+    const failedCount = results.filter((r) => r === "FAILED" || r === "ERROR").length;
+    const skippedCount = results.filter((r) => r === "SKIPPED").length;
 
     return {
       refundedCount,
       failedCount,
-      skippedCount: existingPayments.length - refundedCount - failedCount,
+      skippedCount,
     };
+  }
+
+  /**
+   * Helper to send refund emails asynchronously.
+   */
+  private sendRefundEmail(payment: any) {
+    this.userServiceGrpcClient
+      .findUserById({ userId: payment.userId })
+      .then((userRes) => {
+        if (userRes.success && userRes.user) {
+          this.emailService
+            .sendEmail({
+              to: userRes.user.email,
+              subject: "Refund Processed - Event Booking Platform",
+              text: `Hello ${userRes.user.name},\n\nYour refund of ${payment.currency} ${payment.amount} for booking ${payment.bookingId} has been successfully processed via ${payment.provider}.\n\nReference: ${payment.providerRef}`,
+            })
+            .catch((e) => logger.error(`Failed to send refund email to ${userRes.user?.email}: ${e.message}`));
+        }
+      })
+      .catch((e) => logger.error(`Failed to fetch user for refund email: ${e.message}`));
+  }
+
+  /**
+   * Executes the Razorpay refund API call behind a circuit breaker.
+   */
+  private async executeRefundRazorpayPayment(paymentId: string, amount: number) {
+    return this.razorpay.payments.refund(paymentId, {
+      amount: amount * 100, // paisa
+      notes: { reason: "Event Cancelled" },
+    });
   }
 
   /**
