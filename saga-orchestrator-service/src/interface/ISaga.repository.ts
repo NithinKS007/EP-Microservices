@@ -24,4 +24,5 @@ export interface ISagaRepository extends DatabaseAdapter<
   SagaWhere
 > {
   findByTypeAndReferenceId(sagaType: string, referenceId: string): Promise<SagaModel | null>;
+  findAbandonedSagas(timeoutMinutes: number): Promise<SagaModel[]>;
 }

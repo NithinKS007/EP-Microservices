@@ -25,4 +25,15 @@ export class SagaRepository
       orderBy: { createdAt: "desc" },
     });
   }
+
+  async findAbandonedSagas(timeoutMinutes: number): Promise<SagaModel[]> {
+    const cutoffDate = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+    return await this.prisma.saga.findMany({
+      where: {
+        status: { in: ["started", "in_progress"] },
+        updatedAt: { lt: cutoffDate },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  }
 }

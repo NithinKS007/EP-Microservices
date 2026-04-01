@@ -8,6 +8,7 @@ import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startSagaGrpcServer } from "./grpc/start.server";
 import { OutboxWorker } from "./utils/outbox.worker";
 import { CancelEventSagaConsumer } from "./utils/cancel.event.saga.consumer";
+import { SagaRecoveryJob } from "./utils/saga.recovery.job";
 
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
@@ -81,6 +82,8 @@ const startServer = async () => {
     startSagaGrpcServer();
     if (envConfig.KAFKA_ENABLED === "true") {
       outboxWorker.start();
+      const sagaRecoveryJob = container.resolve<SagaRecoveryJob>("sagaRecoveryJob");
+      sagaRecoveryJob.start();
     }
 
     server.on("error", (error: NodeJS.ErrnoException) => {
