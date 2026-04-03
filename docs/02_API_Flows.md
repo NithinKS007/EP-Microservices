@@ -1,105 +1,123 @@
-# 02 API flows for every endpoint
+# 02 API Flows
 
-This document outlines the end-to-end request lifecycle for all major API endpoints in the system.
+This document describes the implemented booking and payment request paths.
 
-## Generic Request Path (Standard)
-1.  **Client** sends Request.
-2.  **API Gateway** receives Request.
-3.  **Gateway Middleware**: `helmet`, `cors`, `RateLimiter`.
-4.  **Gateway Proxy**: `http-proxy-middleware` forwards request to the target Microservice.
-5.  **Microservice Router**: Receives request at the port (e.g., 3001, 3002, etc.).
-6.  **Microservice Core Middleware**: `customMiddleware.context` and `customMiddleware.requestLogger` initialize tracing.
-7.  **Microservice Auth & Validation**: `authenticate` and `validateDto` secure the route.
-8.  **Microservice Controller**: Extracted body/query/headers, calls Service method.
-9.  **Microservice Service**: Implements business decisions, interacts with Repository or other Services.
-10. **Microservice Repository**: Executes Prisma queries against the dedicated Database.
-11. **Microservice Outbox**: (Optional) Enqueues events to the `OutboxEvent` table.
-12. **Response**: Path reverses back to the Client.
+## Generic Request Path
 
----
+1. Client calls API gateway.
+2. Gateway authenticates protected requests and forwards auth headers.
+3. Target service applies context logging and DTO validation.
+4. Controller calls the service layer.
+5. Service uses repositories, gRPC, and Kafka as needed.
+6. Response returns through gateway.
 
-## 1. Authentication Service (`auth-service`)
+## Booking APIs
 
-### POST `/api/v1/auth/sign-up`
-*   **Flow**: Gateway → Auth Controller (`signUp`) → Auth Service (`signUp`) → User Repository.
-*   **Logic**: Hashes password → Checks for duplicate email → Creates User record.
-*   **Outcome**: User account created, JWT issued.
+### POST `/api/v1/booking`
 
-### POST `/api/v1/auth/sign-in`
-*   **Flow**: Gateway → Auth Controller (`signIn`) → Auth Service (`signIn`) → User Repository.
-*   **Logic**: Validates credentials → Generates Access/Refresh tokens → Stores Refresh token in Redis.
-*   **Outcome**: Tokens returned to client.
+Flow:
 
----
+1. Validate DTO and actor.
+2. Insert `Booking(status = PENDING)`.
+3. Insert `BookingSeat[]`.
+4. Insert outbox `booking.created`.
 
-## 2. User Service (`user-service`)
+Important:
 
-### GET `/api/v1/users/me`
-*   **Flow**: Gateway → Auth Service (Token verification) → User Controller (`getMe`) → User Service (`getUserById`) → User Repository.
-*   **Logic**: Fetches user profile data from `ep_user_service` database based on the `x-id` header.
+- This endpoint still does not lock seats.
+- It still trusts client seat and amount input.
 
----
+### GET `/api/v1/booking`
 
-## 3. Event Service (`event-service`)
+Flow:
 
-### POST `/api/v1/events` (Create Event)
-*   **Flow**: Gateway → Event Controller (`createEvent`) → Event Service (`createEvent`) → Event Repository.
-*   **Validation**: Event date must be in the future.
-*   **Outcome**: Event record created in `ep_event_service`.
+1. Load bookings from `booking-service`.
+2. gRPC `event-service.findEventsByIdsWithSeats`.
+3. gRPC `payment-service.findPaymentsByBookingIds`.
+4. Return enriched bookings.
 
-### GET `/api/v1/events` (List Events)
-*   **Flow**: Gateway → Event Controller (`findEvents`) → Event Service (`findEventsWithPagination`) → Event Repository.
+### GET `/api/v1/booking/:id`
 
----
+Flow:
 
-## 4. Booking Service (`booking-service`)
+1. Load one booking.
+2. Enrich with event/seat details from `event-service`.
+3. Enrich with payment status from `payment-service`.
 
-### POST `/api/v1/bookings` (Create Booking)
-*   **Flow**: Gateway → Booking Controller (`create`) → Booking Service (`create`) → **UnitOfWork Transaction**.
-*   **Logic**:
-    1.  Validates `eventId` and `seatIds`.
-    2.  Extracts `idempotency-key` from headers to prevent duplicate executions.
-    3.  Creates `Booking` entry (Status: `PENDING`).
-    4.  Creates `BookingSeat` entries.
-    5.  Creates `OutboxEvent` (`booking.created`).
-*   **Cross Service**: Enrichment (gRPC) to verify seat availability via Event Service.
-*   **Outcome**: Returns `bookingId`.
+### POST `/api/v1/booking/:id/confirm`
 
-### GET `/api/v1/bookings/:id` (Get Booking Details)
-*   **Flow**: Gateway → Booking Controller (`findBookingById`) → Booking Service (`findBookingByIdWithDetails`).
-*   **Cross Service Call (gRPC)**:
-    1.  `EventServiceGrpcClient`: Fetch event and seat labels.
-    2.  `PaymentServiceGrpcClient`: Fetch associated payment status.
-*   **Outcome**: Enriched booking response (including event name and payment status).
+Flow:
 
----
+1. Validate ownership or admin access.
+2. Require payment status `SUCCESS`.
+3. Confirm seats in `event-service`.
+4. Update booking to `CONFIRMED`.
 
-## 5. Payment Service (`payment-service`)
+### POST `/api/v1/booking/:id/cancel`
+
+Flow:
+
+1. Validate ownership or admin access.
+2. Reject cancellation of `EXPIRED` bookings.
+3. Require refunded payment before cancelling a confirmed booking.
+4. Bulk release seats for the booking.
+5. Update booking to `CANCELLED`.
+
+### POST `/api/v1/booking/:id/expire`
+
+Flow:
+
+1. Validate ownership or admin access.
+2. Only allow open bookings.
+3. Reject expiry of successfully paid bookings.
+4. Bulk release seats for the booking.
+5. Update booking to `EXPIRED`.
+
+## Payment APIs
+
+### POST `/api/v1/payment/:bookingId/initiate`
+
+Flow:
+
+1. Request reaches `payment-service`.
+2. `payment-service` delegates to `saga-orchestrator-service` gRPC `startInitiatePaymentSaga`.
+3. Saga validates booking and actor.
+4. Saga locks seats.
+5. Saga updates booking to `PAYMENT_INITIATED`.
+6. Saga calls `payment-service` gRPC `createPayment`.
+7. Saga returns payment/order details synchronously.
+8. If any downstream step fails, the saga compensates by restoring booking state and releasing seats.
+
+### POST `/api/v1/payment/:paymentId/refund`
+
+Flow:
+
+1. `payment-service` validates actor and payment state.
+2. Calls Razorpay refund API.
+3. Updates payment to `REFUNDED`.
+4. Inserts `PaymentEvent(payment.refunded)`.
+5. Writes outbox `payment.refunded`.
+6. Payment consumer cancels booking and bulk releases seats.
 
 ### POST `/api/v1/payment/webhook/razorpay`
-*   **Flow**: Razorpay → Gateway → Payment Controller (`handleWebhook`).
-*   **Middleware**: Uses `express.raw({ type: "application/json" })` to preserve raw payload for Razorpay signature verification.
-*   **Logic**:
-    1.  Verifies Razorpay signature.
-    2.  If event is `payment.captured`:
-        - Update `Payment` status to `SUCCESS`.
-        - Create `OutboxEvent` (`payment.success`).
-    3.  If event is `payment.failed`:
-        - Update `Payment` status to `FAILED`.
-        - Create `OutboxEvent` (`payment.failed`).
-*   **Outcome**: Payment state persisted and downstream events queued.
 
----
+Flow:
 
-## 6. Saga Orchestrator (`saga-service`)
+1. Preserve raw body with `express.raw`.
+2. Verify Razorpay signature.
+3. On capture:
+   - set payment `SUCCESS`
+   - insert payment event
+   - write outbox `payment.success`
+4. On failure:
+   - set payment `FAILED`
+   - insert payment event
+   - write outbox `payment.failed`
 
-### PATCH `/api/v1/events/:id/cancel` (Initiate Event Cancellation)
-*   **Flow**: Gateway → Event Controller → **SagaServiceGrpcClient** (`startCancelEventSaga`).
-*   **Saga Consumer Flow**:
-    1.  `Saga Orchestrator` receives `saga.cancel.event.requested` via Kafka.
-    2.  **Step 1 (gRPC)**: Call `EventService.markEventCancelled`.
-    3.  **Fetch (gRPC)**: `BookingService.findBookingsByEvent`.
-    4.  **Step 2 (gRPC)**: Call `PaymentService.bulkRefundPayments`.
-    5.  **Step 3 (gRPC)**: Call `BookingService.bulkCancelBookings`.
-    6.  **Step 4 (gRPC)**: Call `EventService.bulkReleaseSeats`.
-*   **Outcome**: Event and all dependent records (Bookings/Payments/Seats) settled/cancelled.
+### GET `/api/v1/payment/:id`
+
+Returns one payment by payment ID.
+
+### GET `/api/v1/payment/bookings/:id`
+
+Returns the payment for one booking ID when present.

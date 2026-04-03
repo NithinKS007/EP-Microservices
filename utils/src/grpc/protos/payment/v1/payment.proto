@@ -39,6 +39,10 @@ message CreatePaymentRequest {
 message CreatePaymentResponse {
   bool success = 1;
   string message = 2;
+  string payment_id = 3;
+  string razorpay_order_id = 4;
+  double amount = 5;
+  string currency = 6;
 }
 
 message FindPaymentsByBookingIdsRequest {

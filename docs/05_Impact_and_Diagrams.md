@@ -1,122 +1,69 @@
-# 05 Flowcharts, Diagrams, and Impact Analysis
+# 05 Impact And Diagrams
 
-This document provides visual representations of the system's flows and a deep dive into the database impact of each major business operation.
-
-## 1. System Communication Diagram
-
-```mermaid
-flowchart TD
-    Client[Client / Frontend]
-    Gateway[API Gateway]
-    Auth[Auth Service]
-    User[User Service]
-    Event[Event Service]
-    Booking[Booking Service]
-    Payment[Payment Service]
-    Saga[Saga Orchestrator]
-    Kafka[(Kafka Event Bus)]
-    Redis[(Redis Cache)]
-
-    Client <-->|HTTP| Gateway
-    Gateway <-->|HTTP| Auth
-    Gateway <-->|HTTP| User
-    Gateway <-->|HTTP| Event
-    Gateway <-->|HTTP| Booking
-    Gateway <-->|HTTP| Payment
-
-    Auth <-->|Cache| Redis
-    
-    Booking -.->|gRPC| Event
-    Booking -.->|gRPC| Payment
-    Saga -.->|gRPC| Event
-    Saga -.->|gRPC| Payment
-    Saga -.->|gRPC| Booking
-
-    Booking --Outbox--> Kafka
-    Payment --Outbox--> Kafka
-    Saga --Outbox--> Kafka
-    Kafka -.->|Subscribe| Saga
-```
-
----
-
-## 2. API Sequence Diagram (Booking Flow)
-
-This diagram shows the end-to-end journey of a seat reservation.
+## Payment Initiation Saga
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant G as Gateway
+    participant P as Payment Service
+    participant S as Saga Orchestrator
     participant B as Booking Service
     participant E as Event Service
-    participant K as Kafka
 
-    C->>G: POST /api/v1/bookings
-    G->>B: Proxy Request
-    B->>E: gRPC: Check Seat Availability
-    E-->>B: Seat Status (AVAILABLE)
-    B->>B: DB Transaction: Create Booking & Outbox
-    B-->>G: 201 Created (bookingId)
-    G-->>C: Response
-    B-->>K: Publish: booking.created
+    C->>G: POST /api/v1/payment/:bookingId/initiate
+    G->>P: initiate payment
+    P->>S: gRPC startInitiatePaymentSaga
+    S->>B: FindBooking
+    S->>E: LockSeats
+    S->>B: UpdateBookingStatus(PAYMENT_INITIATED)
+    S->>P: gRPC CreatePayment
+    P-->>S: payment/order details
+    S-->>P: saga result
+    P-->>C: payment/order details
 ```
 
----
-
-## 3. Saga Orchestration Flow (Event Cancellation)
-
-This flowchart illustrates the multi-service compensation logic when an event is cancelled.
+## Payment Initiation Compensation
 
 ```mermaid
 flowchart TD
-    Start([Admin: Cancel Event]) --> SagaInit[Saga: Create CANCEL_EVENT]
-    SagaInit --> Step1[Step 1: Event Service - Mark Cancelled]
-    Step1 --> FetchBookings[Fetch all Event Bookings via gRPC]
-    FetchBookings --> Step2[Step 2: Payment Service - Bulk Refund]
-    Step2 --> Step3[Step 3: Booking Service - Bulk Cancel]
-    Step3 --> Step4[Step 4: Event Service - Bulk Release Seats]
-    Step4 --> Complete([Saga Completed & Notify])
-
-    subgraph Failure Handling
-        Step1 --Retry 3x--> DLQ[Send to DLQ]
-        Step2 --Retry 3x--> DLQ
-        Step3 --Retry 3x--> DLQ
-        Step4 --Retry 3x--> DLQ
-    end
+    Fail[Failure after lock or booking update] --> Saga[Saga enters compensating]
+    Saga --> RollbackBooking[Update booking back to PENDING]
+    Saga --> ReleaseSeats[Bulk release seats]
+    RollbackBooking --> Done[Compensated]
+    ReleaseSeats --> Done
 ```
 
----
+## Refund Settlement
 
-## 4. Table Impact Analysis
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant P as Payment Service
+    participant K as Kafka
+    participant B as Booking Service
+    participant E as Event Service
 
-This table documents which database tables are affected during core operations.
+    C->>P: POST /api/v1/payment/:paymentId/refund
+    P->>P: Razorpay refund + update payment
+    P-->>K: payment.refunded
+    K->>P: consume payment.refunded
+    P->>B: UpdateBookingStatus(CANCELLED)
+    P->>E: BulkReleaseSeats
+```
 
-| Feature Flow | Tables Read | Tables Updated | Tables Inserted | Enums Used |
-| :--- | :--- | :--- | :--- | :--- |
-| **User Sign-up** | `User` (Identity check) | - | `User` | `Role` |
-| **Create Booking** | `Event`, `Seat` | `Seat` (LOCKED) | `Booking`, `BookingSeat`, `OutboxEvent` | `BookingStatus`, `SeatStatus` |
-| **Payment Webhook** | `Payment` | `Payment` (SUCCESS) | `PaymentEvent`, `OutboxEvent` | `PaymentStatus` |
-| **Cancel Event Saga** | `Event`, `Booking`, `Payment` | `Event`, `Booking`, `Payment`, `Seat` | `Saga`, `SagaStep`, `OutboxEvent` | `SagaStatus`, `StepStatus` |
-| **Booking Expiry** | `Booking`, `Seat` | `Booking` (EXPIRED), `Seat` (AVAILABLE) | `OutboxEvent` | `BookingStatus` |
+## Table Impact
 
-### Transaction Boundaries & Race Conditions
+| Flow | Tables Updated | Tables Inserted |
+| --- | --- | --- |
+| Booking create | `booking`, `bookingSeat` | `outbox_events` |
+| Payment-init saga | `booking` via gRPC, `seats` via gRPC | `saga`, `saga_steps`, `payments` |
+| Payment webhook success | `payments`, `booking` via consumer, `seats` via consumer | `payment_events`, `outbox_events` |
+| Payment webhook failure | `payments`, `booking` via consumer, `seats` via consumer | `payment_events`, `outbox_events` |
+| Refund | `payments`, `booking` via consumer, `seats` via consumer | `payment_events`, `outbox_events` |
 
-1.  **Booking Reservation**:
-    *   **Boundary**: Single microservice transaction (`Booking`) + internal gRPC calls to `Event` to lock seats.
-    *   **Race Condition**: Two users booking the same seat at the exact same millisecond. 
-    *   **Mitigation**: `Event Service` uses a database-level `atomic updateMany` with a status check (`where seatStatus = AVAILABLE`) to ensure only one user can claim the lock.
-2.  **Payment Reconciliation**:
-    *   **Boundary**: Payment Service transaction (Update Payment + Insert Outbox).
-    *   **Race Condition**: Duplicate webhooks from the provider (Razorpay).
-    *   **Mitigation**: Idempotency checks on `providerRef` in the `Payment Repository`.
+## Current Risk Notes
 
----
-
-## 5. Deployment Overview (Corpus Context)
-
-The system is designed for **Dockerized Deployment**.
-
-*   Each service has a dedicated `Dockerfile`.
-*   A root-level `docker-compose.yml` orchestrates all services and the Kafka/Postgres infrastructure.
-*   The `utils` module is shared as a local dependency using Node.js logic.
+- `booking.created` still has no consumer.
+- Rebooking remains blocked by the current `BookingSeat.seatId` uniqueness constraint.
+- Refund settlement is still not modeled as a dedicated refund saga.

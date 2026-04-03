@@ -69,6 +69,10 @@ const startServer = async () => {
           topic: "payment.failed",
           handler: paymentEventConsumer.handleFailed.bind(paymentEventConsumer),
         },
+        {
+          topic: "payment.refunded",
+          handler: paymentEventConsumer.handleRefunded.bind(paymentEventConsumer),
+        },
       ]);
     }
 

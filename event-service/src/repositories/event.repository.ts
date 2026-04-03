@@ -67,4 +67,28 @@ export class EventRepository
       },
     };
   }
+
+  async findEventsByIdsWithSeats(eventIds: string[]): Promise<Prisma.EventGetPayload<{
+    include: {
+      seats: true;
+    };
+  }>[]> {
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    return await this.prisma.event.findMany({
+      where: {
+        id: {
+          in: eventIds,
+        },
+      },
+      include: {
+        seats: true,
+      },
+      orderBy: {
+        eventDate: "desc",
+      },
+    });
+  }
 }

@@ -15,6 +15,8 @@ import { EventServiceGrpcClient } from "./grpc/event.client";
 import { UserServiceGrpcClient } from "./grpc/user.client";
 import { CustomMiddleware, EmailService } from "../../utils/src";
 import { PaymentController } from "./controllers/payment.controller";
+import { UnitOfWork } from "./repositories/unity.of.work";
+import { SagaServiceGrpcClient } from "./grpc/saga.client";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -31,6 +33,7 @@ container.register({
   paymentRepository: asClass(PaymentRepository).scoped(),
   paymentEventRepository: asClass(PaymentEventRepository).scoped(),
   outboxEventRepository: asClass(OutboxEventRepository).scoped(),
+  unitOfWork: asClass(UnitOfWork).scoped(),
 
   kafkaService: asClass(KafkaService)
     .scoped()
@@ -43,6 +46,7 @@ container.register({
   paymentGrpcController: asClass(PaymentGrpcController).scoped(),
   webhookController: asClass(WebhookController).scoped(),
   paymentController: asClass(PaymentController).scoped(),
+  sagaServiceGrpcClient: asClass(SagaServiceGrpcClient).scoped(),
   bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
   eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
   userServiceGrpcClient: asClass(UserServiceGrpcClient).scoped(),

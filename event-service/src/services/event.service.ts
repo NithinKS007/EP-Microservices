@@ -217,4 +217,17 @@ export class EventService {
     await this.eventRepository.update({ id }, { status: "CANCELLED" });
     return this.eventRepository.findById(id);
   }
+
+  /**
+   * Returns event records enriched with seat inventory for downstream reads.
+   * Used in: Booking detail enrichment flow
+   * Triggered via: gRPC
+   */
+  async findEventsByIdsWithSeats(eventIds: string[]) {
+    if (!eventIds.length) {
+      return [];
+    }
+
+    return await this.eventRepository.findEventsByIdsWithSeats(eventIds);
+  }
 }

@@ -3,6 +3,8 @@ import { createGrpcClient, fromGrpcError } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
   BulkReleaseSeatsResponse,
+  ConfirmSeatsRequest,
+  ConfirmSeatsResponse,
   EventServiceClient,
   FindEventsByIdsWithSeatsRequest,
   FindEventsByIdsWithSeatsResponse,
@@ -36,6 +38,20 @@ export class EventServiceGrpcClient {
   findEventsByIdsWithSeats(data: FindEventsByIdsWithSeatsRequest): Promise<FindEventsByIdsWithSeatsResponse> {
     return new Promise((resolve, reject) => {
       this.client.findEventsByIdsWithSeats(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  /**
+   * Confirms seats for a booking after a successful payment settlement.
+   * Used in: Booking manual confirm flow
+   * Triggered via: gRPC
+   */
+  confirmSeats(data: ConfirmSeatsRequest): Promise<ConfirmSeatsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.confirmSeats(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });

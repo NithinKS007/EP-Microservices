@@ -2,6 +2,8 @@ import { envConfig } from "../config/env.config";
 import { createCircuitBreaker, createGrpcClient, fromGrpcError, Metadata } from "../../../utils/src";
 import {
   BookingServiceClient,
+  FindBookingRequest,
+  FindBookingResponse,
   UpdateBookingStatusRequest,
   UpdateBookingStatusResponse,
   BookingStatus,
@@ -27,6 +29,20 @@ export class BookingServiceGrpcClient {
    * Used in: Payment success and failure finalization flow
    * Triggered via: gRPC
    */
+  findBooking(data: FindBookingRequest): Promise<FindBookingResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.findBooking(
+        data,
+        new Metadata(),
+        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
+        (err, res) => {
+          if (err) return reject(fromGrpcError(err));
+          resolve(res);
+        },
+      );
+    });
+  }
+
   updateBookingStatus(data: UpdateBookingStatusRequest): Promise<UpdateBookingStatusResponse> {
     return this.updateBookingStatusBreaker.fire(data);
   }

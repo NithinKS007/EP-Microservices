@@ -33,10 +33,14 @@ export class PaymentGrpcController {
         provider,
         userId,
       })
-      .then(() =>
+      .then((result) =>
         callback(null, {
           success: true,
           message: "Payment created successfully",
+          paymentId: result.paymentId,
+          razorpayOrderId: result.razorpayOrderId,
+          amount: result.amount,
+          currency: result.currency,
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));

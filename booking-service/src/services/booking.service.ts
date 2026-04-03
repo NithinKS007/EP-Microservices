@@ -1,11 +1,16 @@
 import { CreateBookingDto, GetBookingsQueryDto } from "./../dtos/booking.dtos";
-import { NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../../utils/src/error.handling.middleware";
 import { IBookingRepository } from "../interface/IBooking.repository";
 import { IBookingSeatRepository } from "../interface/IBooking.seat.repository";
 import { UnitOfWork } from "../repositories/unity.of.work";
 import { EventServiceGrpcClient } from "../grpc/event.client";
 import { PaymentServiceGrpcClient } from "./../grpc/payment.client";
-import { logger } from "../../../utils/src";
+import { AuthReq, logger, PaymentStatus as GrpcPaymentStatus } from "../../../utils/src";
 
 export class BookingService {
   private readonly bookingRepository: IBookingRepository;
@@ -158,11 +163,12 @@ export class BookingService {
    */
   async findBooking(bookingId: string) {
     if (!bookingId) throw new ValidationError("Missing required fields");
-    const booking = await this.bookingRepository.findById(bookingId);
+    const booking = await this.bookingRepository.findBookingByIdWithSeats(bookingId);
     if (!booking) throw new NotFoundError("Failed to find booking, Please try again later");
     return {
       ...booking,
       totalAmount: Number(booking.totalAmount),
+      seatIds: booking.bookingSeats?.map((seat) => seat.seatId) || [],
     };
   }
 
@@ -350,5 +356,113 @@ export class BookingService {
         providerRef: payment?.providerRef,
       },
     };
+  }
+
+  /**
+   * Confirms a booking only after a successful payment is already recorded.
+   * Used in: Booking manual recovery flow
+   * Triggered via: REST
+   */
+  async confirmBooking(id: string, actor?: AuthReq["user"]) {
+    const booking = await this.findBookingForAction(id, actor);
+
+    if (booking.status === "CONFIRMED") {
+      return await this.findBookingByIdWithDetails(id);
+    }
+
+    if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
+      throw new ConflictError("Terminal bookings cannot be confirmed");
+    }
+
+    const payment = await this.findSinglePaymentByBookingId(id);
+    if (!payment || payment.status !== GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
+      throw new ConflictError("Only successfully paid bookings can be confirmed");
+    }
+
+    await this.eventServiceGrpcClient.confirmSeats({ bookingId: id });
+    await this.bookingRepository.update({ id }, { status: "CONFIRMED" });
+
+    return await this.findBookingByIdWithDetails(id);
+  }
+
+  /**
+   * Cancels a booking and releases any seats still associated with it.
+   * Used in: Booking cancellation flow
+   * Triggered via: REST
+   */
+  async cancelBooking(id: string, actor?: AuthReq["user"]) {
+    const booking = await this.findBookingForAction(id, actor);
+
+    if (booking.status === "CANCELLED") {
+      return await this.findBookingByIdWithDetails(id);
+    }
+
+    if (booking.status === "EXPIRED") {
+      throw new ConflictError("Expired bookings cannot be cancelled");
+    }
+
+    const payment = await this.findSinglePaymentByBookingId(id);
+    if (
+      booking.status === "CONFIRMED" &&
+      payment?.status !== GrpcPaymentStatus.PAYMENT_STATUS_REFUNDED
+    ) {
+      throw new ConflictError("Confirmed bookings must be refunded before cancellation");
+    }
+
+    await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+    await this.bookingRepository.update({ id }, { status: "CANCELLED" });
+
+    return await this.findBookingByIdWithDetails(id);
+  }
+
+  /**
+   * Expires an open booking immediately and releases its seats.
+   * Used in: Booking forced-expiry flow
+   * Triggered via: REST
+   */
+  async expireBooking(id: string, actor?: AuthReq["user"]) {
+    const booking = await this.findBookingForAction(id, actor);
+
+    if (booking.status === "EXPIRED") {
+      return await this.findBookingByIdWithDetails(id);
+    }
+
+    if (booking.status === "CANCELLED" || booking.status === "CONFIRMED") {
+      throw new ConflictError("Only open bookings can be expired");
+    }
+
+    const payment = await this.findSinglePaymentByBookingId(id);
+    if (payment?.status === GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
+      throw new ConflictError("Paid bookings cannot be expired");
+    }
+
+    await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+    await this.bookingRepository.update({ id }, { status: "EXPIRED" });
+
+    return await this.findBookingByIdWithDetails(id);
+  }
+
+  private async findBookingForAction(id: string, actor?: AuthReq["user"]) {
+    if (!id) {
+      throw new ValidationError("Booking id is required");
+    }
+
+    const booking = await this.bookingRepository.findBookingByIdWithSeats(id);
+    if (!booking) {
+      throw new NotFoundError("Booking not found, Please try again later");
+    }
+
+    if (actor?.role !== "ADMIN" && actor?.id !== booking.userId) {
+      throw new ForbiddenError("You are not allowed to access this booking");
+    }
+
+    return booking;
+  }
+
+  private async findSinglePaymentByBookingId(bookingId: string) {
+    const paymentsResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
+      bookingIds: [bookingId],
+    });
+    return paymentsResponse.payments?.[0];
   }
 }

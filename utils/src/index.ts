@@ -89,6 +89,8 @@ export {
   SagaServiceService,
   StartCancelEventSagaRequest,
   StartCancelEventSagaResponse,
+  StartInitiatePaymentSagaRequest,
+  StartInitiatePaymentSagaResponse,
 } from "./grpc/generated/saga/v1/saga";
 
 export { SendUnaryData, ServerUnaryCall } from "./grpc/types";

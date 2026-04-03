@@ -9,8 +9,11 @@ interface PaymentEventMessage {
 }
 
 interface PaymentEventConfig {
-  topic: "payment.success" | "payment.failed";
-  dlqTopic: "payment.success.dlq" | "payment.failed.dlq";
+  topic: "payment.success" | "payment.failed" | "payment.refunded";
+  dlqTopic:
+    | "payment.success.dlq"
+    | "payment.failed.dlq"
+    | "payment.refunded.dlq";
 }
 
 export class PaymentEventConsumer {
@@ -57,6 +60,19 @@ export class PaymentEventConsumer {
       message,
       { topic: "payment.failed", dlqTopic: "payment.failed.dlq" },
       () => this.processPaymentFailure(message),
+    );
+  }
+
+  /**
+   * Handles payment refunded events from Kafka.
+   * Used in: Payment refund settlement flow
+   * Triggered via: Kafka consumer
+   */
+  async handleRefunded(message: PaymentEventMessage) {
+    await this.handleEvent(
+      message,
+      { topic: "payment.refunded", dlqTopic: "payment.refunded.dlq" },
+      () => this.processPaymentRefunded(message),
     );
   }
 
@@ -123,6 +139,22 @@ export class PaymentEventConsumer {
 
     await this.eventServiceGrpcClient.releaseSeats({
       bookingId: message.bookingId,
+    });
+  }
+
+  /**
+   * Cancels booking state and releases all seats after a refund is settled.
+   * Used in: Payment refund consumer
+   * Triggered via: Kafka consumer
+   */
+  private async processPaymentRefunded(message: PaymentEventMessage): Promise<void> {
+    await this.bookingServiceGrpcClient.updateBookingStatus({
+      bookingId: message.bookingId,
+      status: BookingStatus.BOOKING_STATUS_CANCELLED,
+    });
+
+    await this.eventServiceGrpcClient.bulkReleaseSeats({
+      bookingIds: [message.bookingId],
     });
   }
 

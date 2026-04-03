@@ -19,10 +19,24 @@ This is not a monolith disguised as services. The architecture is intentionally 
 - Authentication, token lifecycle, and password reset flows
 - User profile and identity boundary
 - Event and seat inventory management
-- Booking lifecycle management
-- Payment initiation and webhook processing
+- Booking lifecycle management, including manual confirm/cancel/expire endpoints
+- Payment initiation, webhook processing, and manual refund flow
 - Saga-based workflow coordination across booking, event, and payment domains
 - Shared gRPC contracts and cross-cutting utilities through the `utils` package
+
+## Current Booking And Payment Lifecycle
+
+The implemented flow in the current codebase is:
+
+1. `POST /api/v1/booking` creates a booking in `PENDING`, inserts `BookingSeat` rows, and writes `booking.created` to the booking outbox.
+2. `POST /api/v1/payment/:bookingId/initiate` enters through `payment-service`, but the distributed transaction is now executed by `saga-orchestrator-service`.
+3. The payment-init saga validates booking ownership and state, locks seats through `event-service`, updates the booking to `PAYMENT_INITIATED`, and creates the payment through `payment-service`.
+4. Razorpay webhook success writes `payment.success`, and the payment consumer confirms the booking and seats.
+5. Razorpay webhook failure writes `payment.failed`, and the payment consumer cancels the booking and releases seats.
+6. `POST /api/v1/payment/:paymentId/refund` refunds a successful payment, writes `payment.refunded`, and the payment consumer cancels the booking and bulk releases seats.
+7. `POST /api/v1/booking/:id/confirm`, `POST /api/v1/booking/:id/cancel`, and `POST /api/v1/booking/:id/expire` provide explicit recovery and operator lifecycle controls.
+
+This repository also now implements `event-service` gRPC `FindEventsByIdsWithSeats`, which the booking read APIs use for enrichment.
 
 ## Technology Stack
 
@@ -439,6 +453,22 @@ These are adequate for local liveness checks, but production should distinguish:
 - dependency health
 - synthetic business-journey health
 
+### Booking and payment endpoints
+
+Important lifecycle endpoints currently implemented behind the gateway include:
+
+- `POST /booking-service/api/v1/booking`
+- `GET /booking-service/api/v1/booking`
+- `GET /booking-service/api/v1/booking/:id`
+- `POST /booking-service/api/v1/booking/:id/confirm`
+- `POST /booking-service/api/v1/booking/:id/cancel`
+- `POST /booking-service/api/v1/booking/:id/expire`
+- `POST /payment-service/api/v1/payment/:bookingId/initiate`
+- `POST /payment-service/api/v1/payment/:paymentId/refund`
+- `POST /payment-service/api/v1/payment/webhook/razorpay`
+- `GET /payment-service/api/v1/payment/:id`
+- `GET /payment-service/api/v1/payment/bookings/:id`
+
 ## Observability And Health
 
 ### Current state
@@ -716,6 +746,26 @@ Trade-off:
 - local development has been configured so all services reload when their own source or shared `utils/src` changes
 - `READ.md` or equivalent short-form operational notes may still exist, but `README.md` is the primary architectural reference
 
+### Current verified build status
+
+These services currently build successfully with `npm run build`:
+
+- `api-gateway`
+- `booking-service`
+- `event-service`
+- `payment-service`
+- `saga-orchestrator-service`
+- `user-service`
+
+`auth-service` still has unrelated pre-existing build issues.
+
+### Current known gaps
+
+- `booking.created` is still emitted but no service consumes it.
+- Booking creation still does not validate authoritative seat availability, event state, or pricing before persistence.
+- `BookingSeat.seatId` is still globally unique, which blocks clean rebooking after cancelled or expired bookings.
+- Refund settlement is still event-driven inside `payment-service`; it is not yet modeled as a dedicated refund saga.
+
 ## Next Engineering Steps
 
 Recommended next milestones for this repository:
@@ -724,5 +774,3 @@ Recommended next milestones for this repository:
 2. Replace the logger with structured JSON output and trace correlation.
 3. Add automated tests for critical booking and payment workflows.
 4. Create separate `docker-compose.dev.yml` and production deployment manifests.
-5. Add idempotency, retries, and DLQ handling for payment and saga flows.
-6. Introduce IaC for networking, secrets, observability, and runtime provisioning.

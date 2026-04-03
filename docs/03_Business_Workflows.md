@@ -1,72 +1,89 @@
-# 03 Business Workflow Analysis
+# 03 Business Workflows
 
-This document explains the core business logic, decision points, and state transitions for the primary features of the platform.
+This document describes the booking, payment, refund, and cancellation flows as they exist in code.
 
-## 1. Booking & Inventory Lifecycle
+## Booking Creation
 
-### User Action: Create Booking
-1.  **Validation**:
-    *   System checks if the target `eventId` exists and is `ACTIVE`.
-    *   System checks if all requested `seatIds` are currently `AVAILABLE`.
-2.  **Decision**:
-    *   If any seat is already `LOCKED` or `SOLD`, the system rejects the request with a `ConflictError`.
-3.  **State Transition**:
-    *   **Booking Service**: Creates a `Booking` entry with status `PENDING`. It sets an `expiresAt` timestamp (default: **20 minutes**).
-    *   *Note*: The Booking Service does not lock the seats synchronously.
-4.  **Async Communication**:
-    *   Booking service emits `booking.created` via the **Outbox Pattern**.
-    *   > [!WARNING]
-    *   > Currently, there is NO registered Kafka consumer for the `booking.created` event in the codebase. As a result, the intended behavior of the Event Service marking those seats as `LOCKED` does not occur. This is a critical missing implementation gap.
-5.  **Final Output**: Returns `bookingId` to the client for payment initiation.
+Current behavior:
 
----
+1. Booking is created in `PENDING`.
+2. Seats are recorded in `BookingSeat`.
+3. Outbox `booking.created` is stored.
 
-## 2. Payment Initiation & Webhook
+Current limitation:
 
-### Action: Pay for Booking
-> [!IMPORTANT]
-> The webhook endpoint `/api/v1/payment/webhook/razorpay` strictly bypasses standard JSON parsing and uses `express.raw({ type: "application/json" })`. This ensures the raw payload buffer is preserved for accurate cryptographic signature verification by Razorpay.
+- Seat locking does not happen here.
 
-1.  **Validation**:
-    *   Payment service checks if the `bookingId` exists and is still `PENDING`.
-    *   Checks if the booking has not **EXPIRED**.
-2.  **Decision (External Provider)**:
-    *   Razorpay order is created via the **Circuit Breaker** (protects against provider downtime).
-3.  **State Transition**:
-    *   `Payment` record created with status `INITIATED`.
-4.  **Webhook Decision**:
-    *   **Payment Captured**: Transition `Payment` to `SUCCESS` → Emit `payment.success`.
-    *   **Payment Failed**: Transition `Payment` to `FAILED` → Emit `payment.failed`.
+## Payment Initiation
 
----
+Current behavior:
 
-## 3. Event Cancellation (Saga Orchestration)
+1. User calls `POST /api/v1/payment/:bookingId/initiate`.
+2. `payment-service` forwards orchestration to `saga-orchestrator-service`.
+3. Saga validates booking ownership and lifecycle state.
+4. Saga locks seats in `event-service`.
+5. Saga updates booking to `PAYMENT_INITIATED`.
+6. Saga calls `payment-service` to create the provider order and local payment row.
+7. If a downstream step fails, the saga compensates by:
+   - updating booking back to `PENDING`
+   - releasing seats
 
-### Action: Admin Cancels Event
-1.  **Condition Checked**:
-    *   Event must be in the `FUTURE`.
-    *   Admin user role verification in Gateway.
-2.  **Saga Initiation**:
-    *   `Saga Orchestrator` takes control.
-3.  **Business Logic Flow**:
-    *   **Step 1**: The event status is changed to `CANCELLED` (Event Service). No more bookings can be made.
-    *   **Step 2**: The system identifies all associated `Bookings`.
-    *   **Step 3 (Refunds)**: For every successful payment, the `Payment Service` initiates a bulk refund via the provider (Razorpay).
-    *   **Step 4 (Cancellation)**: All `PENDING` or `CONFIRMED` bookings are marked as `CANCELLED`.
-    *   **Step 5 (Inventory Release)**: Every booked/locked seat is released back to `AVAILABLE` status for the event location (if ever reopened, though status is CANCELLED).
-4.  **State Transition**:
-    *   Final state: All financial and inventory ties to this event are severed.
+This is now the authoritative distributed transaction for payment initiation.
 
----
+## Payment Success
 
-## 4. Booking Expiration (Automatic)
+1. Webhook marks payment `SUCCESS`.
+2. Payment outbox writes `payment.success`.
+3. Payment Kafka consumer:
+   - confirms booking
+   - confirms seats as sold
 
-### Trigger: Cron Job or Background Worker
-1.  **Condition Checked**:
-    *   `expiresAt < now()` AND status is `PENDING`.
-2.  **Decision**:
-    *   If payment is not received within 20 minutes, the booking is stale.
-3.  **State Transition**:
-    *   **Booking Service**: Transition to `EXPIRED`.
-    *   **Event Service**: Release associated seats back to `AVAILABLE`.
-4.  **Outcome**: Seat inventory is reclaimed automatically for other users.
+## Payment Failure
+
+1. Webhook marks payment `FAILED`.
+2. Payment outbox writes `payment.failed`.
+3. Payment Kafka consumer:
+   - cancels booking
+   - releases seats
+
+## Manual Refund
+
+1. `payment-service` validates actor and payment state.
+2. Calls Razorpay refund API.
+3. Updates payment to `REFUNDED`.
+4. Writes `payment.refunded`.
+5. Payment Kafka consumer:
+   - cancels booking
+   - bulk releases seats
+
+This downstream refund settlement is still event-driven and has not been moved into a separate refund saga yet.
+
+## Manual Booking Recovery APIs
+
+The repository exposes explicit booking recovery endpoints:
+
+- `POST /api/v1/booking/:id/confirm`
+- `POST /api/v1/booking/:id/cancel`
+- `POST /api/v1/booking/:id/expire`
+
+These are idempotent at the target terminal state and are intended for recovery/operator workflows.
+
+## Booking Expiry Job
+
+Every minute:
+
+1. `booking-service` finds stale `PENDING` and `PAYMENT_INITIATED` bookings.
+2. `event-service` bulk releases their seats.
+3. `booking-service` marks them `EXPIRED`.
+
+## Cancel Event Saga
+
+The existing async cancel-event saga remains unchanged:
+
+1. mark event cancelled
+2. fetch affected bookings
+3. bulk refund payments
+4. bulk cancel bookings
+5. bulk release seats
+
+It uses persisted saga and saga-step state plus a recovery cron job for abandoned sagas.

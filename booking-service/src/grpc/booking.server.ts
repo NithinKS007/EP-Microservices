@@ -33,7 +33,11 @@ export class BookingGrpcController {
         callback(null, {
           success: true,
           message: "Booking found successfully",
-          booking: { ...booking, status: this.mapBookingStatusToGrpc(booking.status) },
+          booking: {
+            ...booking,
+            seatIds: booking.seatIds || [],
+            status: this.mapBookingStatusToGrpc(booking.status),
+          },
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));
@@ -52,6 +56,7 @@ export class BookingGrpcController {
           message: "Bookings found successfully",
           bookings: bookings.map((booking) => ({
             ...booking,
+            seatIds: (booking as { seatIds?: string[] }).seatIds || [],
             status: this.mapBookingStatusToGrpc(booking.status),
           })),
         }),

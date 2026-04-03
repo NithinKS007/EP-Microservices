@@ -1,20 +1,24 @@
-import { ValidationError } from "../../../utils/src/error.handling.middleware";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
 import { IPaymentRepository } from "../interface/IPayment.repository";
 import { IPaymentEventRepository } from "../interface/IPayment.event.repository";
-import { codeGenerator, createCircuitBreaker, EmailService, KafkaService, logger } from "../../../utils/src/index";
+import {
+  AuthReq,
+  codeGenerator,
+  createCircuitBreaker,
+  EmailService,
+  logger,
+} from "../../../utils/src/index";
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
 import { UnitOfWork } from "../repositories/unity.of.work";
-import { PaymentStatus } from "../entity/payment.entity";
 import { UserServiceGrpcClient } from "grpc/user.client";
-import { Payment } from "./../entity/payment.entity";
+import { PaymentStatus } from "../generated/prisma/client";
 
 export class PaymentService {
   private readonly paymentRepository: IPaymentRepository;
   private readonly paymentEventRepository: IPaymentEventRepository;
   private readonly unitOfWork: UnitOfWork;
-  private readonly kafkaService: KafkaService;
   private readonly userServiceGrpcClient: UserServiceGrpcClient;
   private readonly emailService: EmailService;
   private readonly razorpay = new Razorpay({
@@ -29,10 +33,7 @@ export class PaymentService {
     action: (amount) => this.executeCreateRazorpayOrder(amount),
   });
 
-  private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<
-    [string, number],
-    any
-  >({
+  private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<[string, number], any>({
     name: "payment.razorpay.refund",
     timeoutMs: 7000,
     resetTimeoutMs: 20000,
@@ -44,21 +45,18 @@ export class PaymentService {
     paymentRepository,
     paymentEventRepository,
     unitOfWork,
-    kafkaService,
     userServiceGrpcClient,
     emailService,
   }: {
     paymentRepository: IPaymentRepository;
     paymentEventRepository: IPaymentEventRepository;
     unitOfWork: UnitOfWork;
-    kafkaService: KafkaService;
     userServiceGrpcClient: UserServiceGrpcClient;
     emailService: EmailService;
   }) {
     this.paymentRepository = paymentRepository;
     this.paymentEventRepository = paymentEventRepository;
     this.unitOfWork = unitOfWork;
-    this.kafkaService = kafkaService;
     this.userServiceGrpcClient = userServiceGrpcClient;
     this.emailService = emailService;
   }
@@ -295,15 +293,27 @@ export class PaymentService {
         try {
           if (payment.status === "SUCCESS" && payment.providerRef) {
             // 1. Trigger real refund via Razorpay API
-            await this.refundRazorpayPaymentBreaker.fire(payment.providerRef, Number(payment.amount));
+            await this.refundRazorpayPaymentBreaker.fire(
+              payment.providerRef,
+              Number(payment.amount),
+            );
 
             // 2. Update DB status
             await this.paymentRepository.update({ id: payment.id }, { status: "REFUNDED" });
 
             // 3. Send email asynchronously (don't await)
-            this.sendRefundEmail({...payment, amount: Number(payment.amount),status:PaymentStatus.REFUNDED});
+            this.sendRefundEmail({
+              userId: payment.userId,
+              bookingId: payment.bookingId,
+              currency: payment.currency,
+              amount: Number(payment.amount),
+              provider: payment.provider,
+              providerRef: payment.providerRef,
+            });
 
-            logger.info(`Successfully refunded payment ${payment.id} for booking ${payment.bookingId}`);
+            logger.info(
+              `Successfully refunded payment ${payment.id} for booking ${payment.bookingId}`,
+            );
             return "REFUNDED";
           } else if (payment.status === "INITIATED") {
             // No capture happened, just mark as failed
@@ -332,7 +342,14 @@ export class PaymentService {
   /**
    * Helper to send refund emails asynchronously.
    */
-  private sendRefundEmail(payment: Payment) {
+  private sendRefundEmail(payment: {
+    userId: string;
+    bookingId: string;
+    currency: string;
+    amount: number;
+    provider: string;
+    providerRef?: string | null;
+  }) {
     this.userServiceGrpcClient
       .findUserById({ userId: payment.userId })
       .then((userRes) => {
@@ -341,9 +358,13 @@ export class PaymentService {
             .sendEmail({
               to: userRes.user.email,
               subject: "Refund Processed - Event Booking Platform",
-              text: `Hello ${userRes.user.name},\n\nYour refund of ${payment.currency} ${payment.amount} for booking ${payment.bookingId} has been successfully processed via ${payment.provider}.\n\nReference: ${payment.providerRef}`,
+              text: `Hello ${userRes.user.name},\n\nYour refund of ${payment.currency} ${payment.amount} 
+              for booking ${payment.bookingId} has been successfully processed via ${payment.provider}.
+              \n\nReference: ${payment.providerRef}`,
             })
-            .catch((e) => logger.error(`Failed to send refund email to ${userRes.user?.email}: ${e.message}`));
+            .catch((e) =>
+              logger.error(`Failed to send refund email to ${userRes.user?.email}: ${e.message}`),
+            );
         }
       })
       .catch((e) => logger.error(`Failed to fetch user for refund email: ${e.message}`));
@@ -382,17 +403,110 @@ export class PaymentService {
   }
 
   async findPaymentByBookingId(bookingId: string) {
-    return this.paymentRepository.findByBookingId(bookingId);
+    const payment = await this.paymentRepository.findByBookingId(bookingId);
+    if (!payment) {
+      return null;
+    }
+
+    return {
+      ...payment,
+      amount: Number(payment.amount),
+    };
   }
 
   async findPayment(id: string) {
-    const payment = await this.paymentRepository.findById(id)
-    if(!payment) {
-      throw new ValidationError("Payment not found")
+    const payment = await this.paymentRepository.findById(id);
+    if (!payment) {
+      throw new ValidationError("Payment not found");
     }
     return {
       ...payment,
       amount: Number(payment.amount),
+    };
+  }
+
+  /**
+   * Refunds a successful payment and publishes a retryable settlement event that
+   * cancels the booking and releases seats.
+   * Used in: Payment refund flow
+   * Triggered via: REST
+   */
+  async refundPayment(paymentId: string, actor?: AuthReq["user"]) {
+    if (!paymentId) {
+      throw new ValidationError("Payment id is required");
     }
+
+    const payment = await this.paymentRepository.findById(paymentId);
+    if (!payment) {
+      throw new NotFoundError("Payment not found, Please try again later");
+    }
+
+    if (actor?.role !== "ADMIN" && actor?.id !== payment.userId) {
+      throw new ForbiddenError("You are not allowed to refund this payment");
+    }
+
+    if (payment.status === "REFUNDED") {
+      return {
+        ...payment,
+        amount: Number(payment.amount),
+      };
+    }
+
+    if (payment.status !== "SUCCESS") {
+      throw new ConflictError("Only successful payments can be refunded");
+    }
+
+    if (!payment.providerRef) {
+      throw new ConflictError("Payment provider reference is missing");
+    }
+
+    await this.refundRazorpayPaymentBreaker.fire(payment.providerRef, Number(payment.amount));
+
+    const refundedPayment = await this.unitOfWork.withTransaction(async (repos) => {
+      const updatedPayment = await repos.paymentRepository.update(
+        { id: payment.id },
+        { status: "REFUNDED" },
+      );
+
+      if (!updatedPayment) {
+        throw new ValidationError("Failed to update payment status, Please try again later");
+      }
+
+      await repos.paymentEventRepository.create({
+        paymentId: payment.id,
+        type: WEBHOOK_EVENT_TYPE.PAYMENT_REFUNDED,
+        payload: {
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          providerRef: payment.providerRef,
+        },
+      });
+
+      await repos.outboxEventRepository.create({
+        topic: "payment.refunded",
+        payload: {
+          eventId: codeGenerator().code,
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+        },
+        status: "PENDING",
+      });
+
+      return updatedPayment;
+    });
+
+    this.sendRefundEmail({
+      userId: refundedPayment.userId,
+      bookingId: refundedPayment.bookingId,
+      currency: refundedPayment.currency,
+      amount: Number(refundedPayment.amount),
+      provider: refundedPayment.provider,
+      providerRef: refundedPayment.providerRef,
+    });
+
+    return {
+      ...refundedPayment,
+      amount: Number(refundedPayment.amount),
+    };
   }
 }

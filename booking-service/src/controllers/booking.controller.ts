@@ -1,7 +1,12 @@
 import { BookingService } from "./../services/booking.service";
 import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Response } from "express";
-import { CreateBookingDto, GetBookingByIdRequestDto, GetBookingsQueryDto } from "./../dtos/booking.dtos";
+import {
+  BookingActionRequestDto,
+  CreateBookingDto,
+  GetBookingByIdRequestDto,
+  GetBookingsQueryDto,
+} from "./../dtos/booking.dtos";
 
 export class BookingController {
   private readonly bookingService: BookingService;
@@ -34,5 +39,38 @@ export class BookingController {
     const data = await validateDto(GetBookingByIdRequestDto, req.params);
     const booking = await this.bookingService.findBookingByIdWithDetails(data.id);
     sendResponse(res, StatusCodes.OK, booking, "Booking fetched successfully");
+  }
+
+  /**
+   * Confirms a booking manually after payment success has been verified.
+   * Used in: Booking manual recovery flow
+   * Triggered via: REST
+   */
+  async confirm(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(BookingActionRequestDto, req.params);
+    const booking = await this.bookingService.confirmBooking(data.id, req.user);
+    sendResponse(res, StatusCodes.OK, booking, "Booking confirmed successfully");
+  }
+
+  /**
+   * Cancels a booking safely and releases its seats when applicable.
+   * Used in: Booking cancellation flow
+   * Triggered via: REST
+   */
+  async cancel(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(BookingActionRequestDto, req.params);
+    const booking = await this.bookingService.cancelBooking(data.id, req.user);
+    sendResponse(res, StatusCodes.OK, booking, "Booking cancelled successfully");
+  }
+
+  /**
+   * Expires a booking immediately and releases its seats when applicable.
+   * Used in: Booking forced-expiry flow
+   * Triggered via: REST
+   */
+  async expire(req: AuthReq, res: Response): Promise<void> {
+    const data = await validateDto(BookingActionRequestDto, req.params);
+    const booking = await this.bookingService.expireBooking(data.id, req.user);
+    sendResponse(res, StatusCodes.OK, booking, "Booking expired successfully");
   }
 }

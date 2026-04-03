@@ -12,6 +12,11 @@ import {
   BulkReleaseSeatsResponse,
   MarkEventCancelledRequest,
   MarkEventCancelledResponse,
+  FindEventsByIdsWithSeatsRequest,
+  FindEventsByIdsWithSeatsResponse,
+  EventStatus,
+  SeatStatus,
+  SeatTier,
 } from "../../../utils/src/index";
 import { EventService } from "../services/event.service";
 
@@ -102,5 +107,66 @@ export class EventGrpcController {
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  findEventsByIdsWithSeats(
+    call: ServerUnaryCall<FindEventsByIdsWithSeatsRequest, FindEventsByIdsWithSeatsResponse>,
+    callback: SendUnaryData<FindEventsByIdsWithSeatsResponse>,
+  ) {
+    const { eventIds } = call.request;
+    this.eventService
+      .findEventsByIdsWithSeats(eventIds)
+      .then((events) =>
+        callback(null, {
+          success: true,
+          message: "Events found successfully",
+          events: events.map((event) => ({
+            id: event.id,
+            name: event.name,
+            description: event.description || "",
+            venueName: event.venueName,
+            eventDate: event.eventDate,
+            status:
+              event.status === "CANCELLED" ? EventStatus.CANCELLED : EventStatus.ACTIVE,
+            seats: event.seats.map((seat) => ({
+              id: seat.id,
+              eventId: seat.eventId,
+              seatNumber: seat.seatNumber,
+              seatTier: this.mapSeatTier(seat.seatTier),
+              price: Number(seat.price),
+              seatStatus: this.mapSeatStatus(seat.seatStatus),
+              lockedByBookingId: seat.lockedByBookingId || "",
+              lockExpiresAt: seat.lockExpiresAt || undefined,
+              createdAt: seat.createdAt,
+              updatedAt: seat.updatedAt,
+            })),
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+          })),
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  private mapSeatStatus(status: "AVAILABLE" | "LOCKED" | "SOLD"): SeatStatus {
+    switch (status) {
+      case "LOCKED":
+        return SeatStatus.LOCKED;
+      case "SOLD":
+        return SeatStatus.SOLD;
+      default:
+        return SeatStatus.AVAILABLE;
+    }
+  }
+
+  private mapSeatTier(tier: "VIP" | "REGULAR" | "ECONOMY"): SeatTier {
+    switch (tier) {
+      case "VIP":
+        return SeatTier.VIP;
+      case "REGULAR":
+        return SeatTier.REGULAR;
+      default:
+        return SeatTier.ECONOMY;
+    }
   }
 }

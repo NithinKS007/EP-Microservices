@@ -6,4 +6,5 @@ const controller = container.resolve<SagaGrpcController>("sagaGrpcController");
 
 export const handlers: GrpcHandler = {
   startCancelEventSaga: controller.startCancelEventSaga.bind(controller),
+  startInitiatePaymentSaga: controller.startInitiatePaymentSaga.bind(controller),
 };

@@ -9,4 +9,5 @@ export const handlers: GrpcHandler = {
   releaseSeats: controller.releaseSeats.bind(controller),
   bulkReleaseSeats: controller.bulkReleaseSeats.bind(controller),
   markEventCancelled: controller.markEventCancelled.bind(controller),
+  findEventsByIdsWithSeats: controller.findEventsByIdsWithSeats.bind(controller),
 };

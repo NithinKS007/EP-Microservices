@@ -66,3 +66,10 @@ export class GetBookingByIdRequestDto {
   @IsUUID("4", { message: "Booking ID must be a valid UUID" })
   id!: string;
 }
+
+export class BookingActionRequestDto {
+  @IsNotEmpty({ message: "Booking ID is required" })
+  @Type(() => String)
+  @IsUUID("4", { message: "Booking ID must be a valid UUID" })
+  id!: string;
+}
