@@ -80,19 +80,6 @@ export class BookingService {
         },
       });
 
-      await repos.outboxEventRepository.create({
-        topic: "booking.created",
-        payload: {
-          bookingId: createdBooking.id,
-          userId,
-          eventId,
-          totalAmount,
-          expiresAt: createdBooking.expiresAt,
-          seatIds: seats.map((s) => s.id),
-        },
-        status: "PENDING",
-      });
-
       return createdBooking;
     });
 

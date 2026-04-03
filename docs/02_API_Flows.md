@@ -1,123 +1,77 @@
 # 02 API Flows
 
-This document describes the implemented booking and payment request paths.
+This document details the exact sequence of events when key REST APIs are invoked.
 
 ## Generic Request Path
 
-1. Client calls API gateway.
-2. Gateway authenticates protected requests and forwards auth headers.
-3. Target service applies context logging and DTO validation.
-4. Controller calls the service layer.
-5. Service uses repositories, gRPC, and Kafka as needed.
-6. Response returns through gateway.
+1. Client calls API gateway (`http://localhost:3000`).
+2. Gateway authenticates the JWT (if protected) and proxies to the upstream service.
+3. Target service controllers validate DTOs.
+4. Services execute local database transactions or rely on gRPC for foreign data.
+5. Response returns through gateway.
 
 ## Booking APIs
 
-### POST `/api/v1/booking`
+### `POST /api/v1/booking`
+Creates a brand new booking.
+**Flow:**
+1. Validates the incoming DTO and active user.
+2. Creates the `Booking` record with `status = PENDING`.
+3. Creates `BookingSeat[]` array representing the chosen seats.
+4. Returns the response immediately to the user.
+*Note: This endpoint does NOT lock the seats yet. Seat locking is intentionally delayed until Payment Initiation to prevent holding seats for users who abandon the checkout process.*
 
-Flow:
+### `GET /api/v1/booking` & `GET /api/v1/booking/:id`
+Retrieves booking details.
+**Flow:**
+1. Reads local `Booking` data.
+2. Synchronously calls `event-service` via gRPC (`FindEventsByIdsWithSeats`) for the event and seat metadata.
+3. Synchronously calls `payment-service` via gRPC (`findPaymentsByBookingIds`) to fetch the payment status.
 
-1. Validate DTO and actor.
-2. Insert `Booking(status = PENDING)`.
-3. Insert `BookingSeat[]`.
-4. Insert outbox `booking.created`.
+### Manual State Overrides: Confirm, Cancel, Expire
 
-Important:
+These are explicit recovery/admin endpoints to manually override states.
+They use **Synchronous gRPC** to alter the seat inventory immediately.
+*Why Synchronous?* Because these operations are heavily dependent on state. A user expects a 200 OK for a cancellation to mean "my seats are absolutely released."
 
-- This endpoint still does not lock seats.
-- It still trusts client seat and amount input.
+**`POST /api/v1/booking/:id/confirm`**
+1. Validates payment status is `SUCCESS`.
+2. gRPC call to `eventServiceGrpcClient.confirmSeats` (blocks until seat is mutated to `SOLD`).
+3. Updates Booking to `CONFIRMED`.
 
-### GET `/api/v1/booking`
+**`POST /api/v1/booking/:id/cancel`**
+1. Validates refund state (if it was paid).
+2. gRPC call to `eventServiceGrpcClient.bulkReleaseSeats` (blocks until seats are `AVAILABLE`).
+3. Updates Booking to `CANCELLED`.
 
-Flow:
-
-1. Load bookings from `booking-service`.
-2. gRPC `event-service.findEventsByIdsWithSeats`.
-3. gRPC `payment-service.findPaymentsByBookingIds`.
-4. Return enriched bookings.
-
-### GET `/api/v1/booking/:id`
-
-Flow:
-
-1. Load one booking.
-2. Enrich with event/seat details from `event-service`.
-3. Enrich with payment status from `payment-service`.
-
-### POST `/api/v1/booking/:id/confirm`
-
-Flow:
-
-1. Validate ownership or admin access.
-2. Require payment status `SUCCESS`.
-3. Confirm seats in `event-service`.
-4. Update booking to `CONFIRMED`.
-
-### POST `/api/v1/booking/:id/cancel`
-
-Flow:
-
-1. Validate ownership or admin access.
-2. Reject cancellation of `EXPIRED` bookings.
-3. Require refunded payment before cancelling a confirmed booking.
-4. Bulk release seats for the booking.
-5. Update booking to `CANCELLED`.
-
-### POST `/api/v1/booking/:id/expire`
-
-Flow:
-
-1. Validate ownership or admin access.
-2. Only allow open bookings.
-3. Reject expiry of successfully paid bookings.
-4. Bulk release seats for the booking.
-5. Update booking to `EXPIRED`.
+**`POST /api/v1/booking/:id/expire`**
+1. Validates booking is not already paid.
+2. gRPC call to `eventServiceGrpcClient.bulkReleaseSeats`.
+3. Updates Booking to `EXPIRED`.
 
 ## Payment APIs
 
-### POST `/api/v1/payment/:bookingId/initiate`
+### `POST /api/v1/payment/:bookingId/initiate`
+**Delegates to Saga Orchestrator.**
+1. Hits `payment-service`.
+2. Forwards to `saga-orchestrator-service` (`startInitiatePaymentSaga`).
+3. Saga executes:
+   - Validate booking
+   - Lock seats in `event-service`
+   - Mark `PAYMENT_INITIATED`
+   - Create local Payment record + Razorpay Order ID
+4. Returns order details to the user synchronously so the frontend can load the payment portal.
 
-Flow:
+### Razorpay Webhook: `POST /api/v1/payment/webhook/razorpay`
+**Fully Event-Driven Asynchronous Settlement.**
+1. Captures verification signature.
+2. Updates `Payment` state to `SUCCESS` or `FAILED`.
+3. Writes `payment.success` (or failed) to the Outbox table.
+4. Gateway immediately returns 200 to Razorpay.
+5. In the background, the outbox worker pushes the event to Kafka. The `PaymentEventConsumer` reads it and settles the booking/seat state asynchronously.
 
-1. Request reaches `payment-service`.
-2. `payment-service` delegates to `saga-orchestrator-service` gRPC `startInitiatePaymentSaga`.
-3. Saga validates booking and actor.
-4. Saga locks seats.
-5. Saga updates booking to `PAYMENT_INITIATED`.
-6. Saga calls `payment-service` gRPC `createPayment`.
-7. Saga returns payment/order details synchronously.
-8. If any downstream step fails, the saga compensates by restoring booking state and releasing seats.
-
-### POST `/api/v1/payment/:paymentId/refund`
-
-Flow:
-
-1. `payment-service` validates actor and payment state.
-2. Calls Razorpay refund API.
-3. Updates payment to `REFUNDED`.
-4. Inserts `PaymentEvent(payment.refunded)`.
-5. Writes outbox `payment.refunded`.
-6. Payment consumer cancels booking and bulk releases seats.
-
-### POST `/api/v1/payment/webhook/razorpay`
-
-Flow:
-
-1. Preserve raw body with `express.raw`.
-2. Verify Razorpay signature.
-3. On capture:
-   - set payment `SUCCESS`
-   - insert payment event
-   - write outbox `payment.success`
-4. On failure:
-   - set payment `FAILED`
-   - insert payment event
-   - write outbox `payment.failed`
-
-### GET `/api/v1/payment/:id`
-
-Returns one payment by payment ID.
-
-### GET `/api/v1/payment/bookings/:id`
-
-Returns the payment for one booking ID when present.
+### `POST /api/v1/payment/:paymentId/refund`
+1. Hits Razorpay to issue a live refund.
+2. Updates Payment to `REFUNDED`.
+3. Writes `payment.refunded` to Outbox.
+4. Kafka Consumer triggers async cancellation and seat release.

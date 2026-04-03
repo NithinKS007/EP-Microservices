@@ -9,7 +9,7 @@ model BookingSeat {
 
     booking   Booking  @relation(fields: [bookingId], references: [id])
 
-    @@unique([seatId])
+    @@unique([bookingId, seatId])
     @@index([bookingId])
     @@map("bookingSeat")
 }

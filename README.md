@@ -28,13 +28,13 @@ This is not a monolith disguised as services. The architecture is intentionally 
 
 The implemented flow in the current codebase is:
 
-1. `POST /api/v1/booking` creates a booking in `PENDING`, inserts `BookingSeat` rows, and writes `booking.created` to the booking outbox.
+1. `POST /api/v1/booking` creates a booking in `PENDING` and inserts `BookingSeat` rows.
 2. `POST /api/v1/payment/:bookingId/initiate` enters through `payment-service`, but the distributed transaction is now executed by `saga-orchestrator-service`.
 3. The payment-init saga validates booking ownership and state, locks seats through `event-service`, updates the booking to `PAYMENT_INITIATED`, and creates the payment through `payment-service`.
 4. Razorpay webhook success writes `payment.success`, and the payment consumer confirms the booking and seats.
 5. Razorpay webhook failure writes `payment.failed`, and the payment consumer cancels the booking and releases seats.
 6. `POST /api/v1/payment/:paymentId/refund` refunds a successful payment, writes `payment.refunded`, and the payment consumer cancels the booking and bulk releases seats.
-7. `POST /api/v1/booking/:id/confirm`, `POST /api/v1/booking/:id/cancel`, and `POST /api/v1/booking/:id/expire` provide explicit recovery and operator lifecycle controls.
+7. `POST /api/v1/booking/:id/confirm`, `POST /api/v1/booking/:id/cancel`, and `POST /api/v1/booking/:id/expire` provide explicit recovery and operator lifecycle controls using Synchronous gRPC.
 
 This repository also now implements `event-service` gRPC `FindEventsByIdsWithSeats`, which the booking read APIs use for enrichment.
 
@@ -761,10 +761,9 @@ These services currently build successfully with `npm run build`:
 
 ### Current known gaps
 
-- `booking.created` is still emitted but no service consumes it.
-- Booking creation still does not validate authoritative seat availability, event state, or pricing before persistence.
-- `BookingSeat.seatId` is still globally unique, which blocks clean rebooking after cancelled or expired bookings.
-- Refund settlement is still event-driven inside `payment-service`; it is not yet modeled as a dedicated refund saga.
+- Booking creation still does not validate authoritative event state pricing or max-capacity before persistence.
+- Refund settlement is still event-driven inside `payment-service`; it is not yet modeled as a dedicated refund saga workflow.
+
 
 ## Next Engineering Steps
 
