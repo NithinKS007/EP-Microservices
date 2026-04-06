@@ -29,11 +29,11 @@ export const envConfig: Env = {
   EVENT_SERVICE_URL: process.env.EVENT_SERVICE_URL || "http://localhost:3003",
   BOOKING_SERVICE_URL: process.env.BOOKING_SERVICE_URL || "http://localhost:3004",
   PAYMENT_SERVICE_URL: process.env.PAYMENT_SERVICE_URL || "http://localhost:3005",
-  
+
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:3000",
 
   JWT_ACCESS_TOKEN_SECRET: process.env.JWT_ACCESS_TOKEN_SECRET || "secret",
-  JWT_ACCESS_TOKEN_EXPIRATION: process.env.JWT_ACCESS_TOKEN_EXPIRATION ||"1d",
+  JWT_ACCESS_TOKEN_EXPIRATION: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "1d",
   JWT_REFRESH_TOKEN_SECRET: process.env.JWT_REFRESH_TOKEN_SECRET || "secret",
   JWT_REFRESH_TOKEN_EXPIRATION: process.env.JWT_REFRESH_TOKEN_EXPIRATION || "7d",
 };

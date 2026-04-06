@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../../utils/src/error.handling.middleware";
-
+import { logger } from "../../utils/src";
 
 export const prismaErrorHandler = (
-  err: AppError | any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  err: any,
   req: Request,
   res: Response,
   next: NextFunction,
@@ -13,12 +14,27 @@ export const prismaErrorHandler = (
   let code = err.code || "INTERNAL_ERROR";
 
   // Type guards for Prisma-like errors
-  const isPrismaKnownError = (e: any) =>
-    e && e.name === "PrismaClientKnownRequestError" && typeof e.code === "string";
-  const isPrismaValidationError = (e: any) => e && e.name === "PrismaClientValidationError";
-  const isPrismaUnknownError = (e: any) => e && e.name === "PrismaClientUnknownRequestError";
-  const isPrismaInitializationError = (e: any) => e && e.name === "PrismaClientInitializationError";
-  const isPrismaPanicError = (e: any) => e && e.name === "PrismaClientRustPanicError";
+  const isPrismaKnownError = (e: unknown): e is { name: string; code: string; message: string } =>
+    !!e &&
+    typeof e === "object" &&
+    "name" in e &&
+    e.name === "PrismaClientKnownRequestError" &&
+    "code" in e &&
+    typeof e.code === "string" &&
+    "message" in e &&
+    typeof e.message === "string";
+
+  const isPrismaValidationError = (e: unknown): e is { name: string } =>
+    !!e && typeof e === "object" && "name" in e && e.name === "PrismaClientValidationError";
+
+  const isPrismaUnknownError = (e: unknown): e is { name: string } =>
+    !!e && typeof e === "object" && "name" in e && e.name === "PrismaClientUnknownRequestError";
+
+  const isPrismaInitializationError = (e: unknown): e is { name: string } =>
+    !!e && typeof e === "object" && "name" in e && e.name === "PrismaClientInitializationError";
+
+  const isPrismaPanicError = (e: unknown): e is { name: string } =>
+    !!e && typeof e === "object" && "name" in e && e.name === "PrismaClientRustPanicError";
 
   if (isPrismaKnownError(err)) {
     // Inline Prisma error map
@@ -186,6 +202,6 @@ export const prismaErrorHandler = (
     message = err.message || "Unexpected error occurred.";
   }
 
-  console.error(`[${code}] ${statusCode} - ${message}`);
+  logger.error(`[${code}] ${statusCode} - ${message}`);
   next(new AppError(message, statusCode, code));
 };

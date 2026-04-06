@@ -135,8 +135,9 @@ class ServiceProxy {
 
   private static handleProxyRequest(
     proxyReq: ClientRequest,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     req: IncomingMessage & { body?: any },
-    res: ServerResponse,
+    _res: ServerResponse,
   ): void {
     if (req.headers["user-agent"]) {
       proxyReq.setHeader("user-agent", req.headers["user-agent"]);
@@ -182,7 +183,7 @@ class ServiceProxy {
   private static handleProxyResponse(
     proxyRes: IncomingMessage,
     req: IncomingMessage,
-    res: ServerResponse,
+    _res: ServerResponse,
   ): void {
     logger.info(`Received response ${proxyRes.statusCode} for ${req.method} ${req.url}`);
   }

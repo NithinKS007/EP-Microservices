@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { UnauthorizedError } from "../../../utils/src/error.handling.middleware";
 import { JwtService } from "../../../utils/src/jwt.service";
+import { logger } from "../../../utils/src";
 import { container } from "../container";
 /**
  * Authentication middleware that validates the JWT access token
@@ -19,7 +20,7 @@ import { container } from "../container";
  * router.get("/profile", authenticate, userController.getProfile);
  */
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
     next(new UnauthorizedError("Access token not found, Please try again later"));
@@ -38,7 +39,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     next();
   } catch (error: unknown) {
-    console.log(`Error in authentication middleware${error} `);
+    logger.error(`Error in authentication middleware: ${error}`);
     next(new UnauthorizedError("Invalid access token"));
     return;
   }
