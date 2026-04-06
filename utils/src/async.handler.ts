@@ -17,9 +17,5 @@ import expressAsyncHandler from "express-async-handler";
  * router.get('/users', asyncHandler(userController.getAllUsers));
  */
 export const asyncHandler = (
-  controllerMethod: (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => Promise<void>
+  controllerMethod: (req: Request, res: Response, next: NextFunction) => Promise<void>,
 ) => expressAsyncHandler(controllerMethod);

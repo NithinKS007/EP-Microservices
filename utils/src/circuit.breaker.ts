@@ -26,15 +26,12 @@ export function createCircuitBreaker<TArgs extends unknown[], TResult>({
   resetTimeoutMs = 15000,
   volumeThreshold = 5,
 }: CircuitBreakerConfig<TArgs, TResult>): CircuitBreakerHandle<TArgs, TResult> {
-  const breaker = new Opossum(
-    (args: { params: TArgs }) => action(...args.params),
-    {
-      timeout: timeoutMs,
-      errorThresholdPercentage,
-      resetTimeout: resetTimeoutMs,
-      volumeThreshold,
-    },
-  );
+  const breaker = new Opossum((args: { params: TArgs }) => action(...args.params), {
+    timeout: timeoutMs,
+    errorThresholdPercentage,
+    resetTimeout: resetTimeoutMs,
+    volumeThreshold,
+  });
 
   breaker.on("open", () => logger.warn(`Circuit breaker opened: ${name}`));
   breaker.on("halfOpen", () => logger.warn(`Circuit breaker half-open: ${name}`));

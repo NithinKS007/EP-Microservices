@@ -65,7 +65,7 @@ export {
   EventWithSeats,
   Seat,
   SeatStatus,
-  SeatTier
+  SeatTier,
 } from "./grpc/generated/event/v1/event";
 
 export {
@@ -99,5 +99,5 @@ export { hashPassword, comparePassword } from "./hash";
 export { validateDto } from "./validate.dtos";
 export { EmailService } from "./email.service";
 export { TokenService } from "./token.service";
-export { AuthReq, CustomMiddleware,WithMetaData } from "./auth.middleware";
+export { AuthReq, CustomMiddleware, WithMetaData } from "./auth.middleware";
 export { CronRunner } from "./cron.job";

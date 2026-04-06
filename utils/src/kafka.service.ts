@@ -1,4 +1,5 @@
 import { Kafka, EachMessagePayload, ProducerRecord, Message, Producer, Consumer } from "kafkajs";
+import { logger } from "./logger";
 
 /**
  * Kafka configuration module.
@@ -66,12 +67,12 @@ export class KafkaService {
 
   async connectProducer(): Promise<void> {
     await this.producer.connect();
-    console.log(`[Kafka] Producer connected`);
+    logger.info(`[Kafka] Producer connected`);
   }
 
   async connectConsumer(): Promise<void> {
     await this.consumer.connect();
-    console.log(`[Kafka] Consumer connected (groupId=${this.groupId})`);
+    logger.info(`[Kafka] Consumer connected (groupId=${this.groupId})`);
   }
 
   async publishMessage<T>(params: PublishMessageParams<T>): Promise<void> {
@@ -85,7 +86,7 @@ export class KafkaService {
     };
 
     await this.producer.send(record);
-    console.log(`[Kafka] Published to ${topic}: ${JSON.stringify(message)}`);
+    logger.info(`[Kafka] Published to ${topic}: ${JSON.stringify(message)}`);
   }
 
   async consumeMessages<T>(data: { topic: string; handler: MessageHandler<T> }): Promise<void> {
@@ -95,20 +96,20 @@ export class KafkaService {
       eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
         try {
           if (!message?.value) {
-            console.warn("Kafka message value is empty or null.");
+            logger.warn("Kafka message value is empty or null.");
             return;
           }
-          const parsed: T = JSON.parse(message?.value.toString());
+          const parsed: T = JSON.parse(message.value.toString());
           await handler(parsed);
         } catch (err) {
-          console.error(
+          logger.error(
             `[Kafka Consumer] Error processing message on topic "${topic}" [partition ${partition}]`,
             err,
           );
         }
       },
     });
-    console.log(`[Kafka] Subscribed to topic: ${topic}`);
+    logger.info(`[Kafka] Subscribed to topic: ${topic}`);
   }
 
   async consumeEvents<T>(
@@ -116,11 +117,11 @@ export class KafkaService {
   ): Promise<void> {
     for (const { topic } of consumers) {
       await this.consumer.subscribe({ topic, fromBeginning: false });
-      console.log(`[Kafka] Subscribed to topic: ${topic}`);
+      logger.info(`[Kafka] Subscribed to topic: ${topic}`);
     }
 
     await this.consumer.run({
-      eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
+      eachMessage: async ({ topic, partition: _partition, message }: EachMessagePayload) => {
         try {
           if (!message?.value) return;
           const parsed = JSON.parse(message.value.toString());
@@ -129,7 +130,7 @@ export class KafkaService {
             await match.handler(parsed);
           }
         } catch (err) {
-          console.error(`[Kafka Consumer] Error on topic "${topic}"`, err);
+          logger.error(`[Kafka Consumer] Error on topic "${topic}"`, err);
         }
       },
     });

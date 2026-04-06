@@ -8,5 +8,5 @@ export enum StatusCodes {
   InternalServerError = 500,
   RateLimit = 429,
   Conflict = 409,
-  SERVICE_UNAVAILABLE = 503
+  SERVICE_UNAVAILABLE = 503,
 }

@@ -21,9 +21,9 @@ import { StatusCodes } from "./http.status.codes";
  */
 
 export const notFoundMiddleware: RequestHandler = (
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): void => {
   sendResponse(res, StatusCodes.NotFound, null, "Not found");
 };
