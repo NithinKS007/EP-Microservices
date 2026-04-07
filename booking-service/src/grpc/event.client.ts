@@ -35,7 +35,9 @@ export class EventServiceGrpcClient {
    * Used in: Booking finding flow
    * Triggered via: gRPC
    */
-  findEventsByIdsWithSeats(data: FindEventsByIdsWithSeatsRequest): Promise<FindEventsByIdsWithSeatsResponse> {
+  findEventsByIdsWithSeats(
+    data: FindEventsByIdsWithSeatsRequest,
+  ): Promise<FindEventsByIdsWithSeatsResponse> {
     return new Promise((resolve, reject) => {
       this.client.findEventsByIdsWithSeats(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));

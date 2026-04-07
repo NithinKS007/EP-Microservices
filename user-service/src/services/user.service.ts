@@ -27,7 +27,7 @@ export class UserService {
       throw new NotFoundError("User not found, Please try again later");
     }
 
-    const { password, ...safeUser } = user;
+    const { password:_password, ...safeUser } = user;
     logger.info(`Finding user by id ${id}`);
     logger.info(`user in findUserByIdOrThrow user service => ${JSON.stringify(safeUser)}`);
     return safeUser;
@@ -42,7 +42,7 @@ export class UserService {
     if (!id) throw new ValidationError("User id is required");
     const user = await this.userRepository.findById(id);
     if (user) {
-      const { password, ...safeUser } = user;
+      const { password:_password, ...safeUser } = user;
       logger.info(`Finding user by id ${id}`);
       logger.info(`user in findUserById user service => ${JSON.stringify(safeUser)}`);
     }
@@ -71,7 +71,7 @@ export class UserService {
     if (!email) throw new ValidationError("Email is required");
     const user = await this.userRepository.findByEmail(email);
     if (user) {
-      const { password, ...safeUser } = user;
+      const { password:_password, ...safeUser } = user;
       logger.info(`Finding user by email ${email}`);
       logger.info(`user in findUserByEmail user service => ${JSON.stringify(safeUser)}`);
     }

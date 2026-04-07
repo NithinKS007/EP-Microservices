@@ -1,4 +1,9 @@
-import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../../utils/src/error.handling.middleware";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../../utils/src/error.handling.middleware";
 import { IPaymentRepository } from "../interface/IPayment.repository";
 import { IPaymentEventRepository } from "../interface/IPayment.event.repository";
 import {
@@ -11,6 +16,8 @@ import {
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
+import { Orders } from "razorpay/dist/types/orders";
+import { Refunds } from "razorpay/dist/types/refunds";
 import { UnitOfWork } from "../repositories/unity.of.work";
 import { UserServiceGrpcClient } from "grpc/user.client";
 import { PaymentStatus } from "../generated/prisma/client";
@@ -25,7 +32,10 @@ export class PaymentService {
     key_id: envConfig.RAZORPAY_KEY_ID,
     key_secret: envConfig.RAZORPAY_KEY_SECRET,
   });
-  private readonly createRazorpayOrderBreaker = createCircuitBreaker<[number], any>({
+  private readonly createRazorpayOrderBreaker = createCircuitBreaker<
+    [number],
+    Orders.RazorpayOrder
+  >({
     name: "payment.razorpay.create_order",
     timeoutMs: 7000,
     resetTimeoutMs: 20000,
@@ -33,7 +43,10 @@ export class PaymentService {
     action: (amount) => this.executeCreateRazorpayOrder(amount),
   });
 
-  private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<[string, number], any>({
+  private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<
+    [string, number],
+    Refunds.RazorpayRefund
+  >({
     name: "payment.razorpay.refund",
     timeoutMs: 7000,
     resetTimeoutMs: 20000,
@@ -66,7 +79,7 @@ export class PaymentService {
    * Used in: Booking payment-init flow
    * Triggered via: REST / gRPC
    */
-  async create({ amount, bookingId, currency, provider, userId, providerRef }: CreatePaymentDto) {
+  async create({ amount, bookingId, currency, provider, userId }: CreatePaymentDto) {
     if (provider !== "RAZORPAY") {
       throw new ValidationError("Unsupported provider,Please try again later");
     }
@@ -321,8 +334,8 @@ export class PaymentService {
             return "FAILED";
           }
           return "SKIPPED";
-        } catch (error: any) {
-          logger.error(`Failed to refund payment ${payment.id}: ${error.message}`);
+        } catch (error: unknown) {
+          logger.error(`Failed to refund payment ${payment.id}: ${this.getErrorMessage(error)}`);
           return "ERROR";
         }
       }),
@@ -373,7 +386,10 @@ export class PaymentService {
   /**
    * Executes the Razorpay refund API call behind a circuit breaker.
    */
-  private async executeRefundRazorpayPayment(paymentId: string, amount: number) {
+  private async executeRefundRazorpayPayment(
+    paymentId: string,
+    amount: number,
+  ): Promise<Refunds.RazorpayRefund> {
     return this.razorpay.payments.refund(paymentId, {
       amount: amount * 100, // paisa
       notes: { reason: "Event Cancelled" },
@@ -385,7 +401,7 @@ export class PaymentService {
    * Used in: Booking payment-init flow
    * Triggered via: internal service call
    */
-  private async createRazorpayOrder(amount: number) {
+  private async createRazorpayOrder(amount: number): Promise<Orders.RazorpayOrder> {
     return this.createRazorpayOrderBreaker.fire(amount);
   }
 
@@ -394,7 +410,7 @@ export class PaymentService {
    * Used in: Booking payment-init flow
    * Triggered via: internal service call
    */
-  private async executeCreateRazorpayOrder(amount: number) {
+  private async executeCreateRazorpayOrder(amount: number): Promise<Orders.RazorpayOrder> {
     return this.razorpay.orders.create({
       amount: amount * 100,
       currency: "INR",
@@ -508,5 +524,9 @@ export class PaymentService {
       ...refundedPayment,
       amount: Number(refundedPayment.amount),
     };
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown error";
   }
 }

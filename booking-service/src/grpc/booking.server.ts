@@ -88,7 +88,7 @@ export class BookingGrpcController {
     const { bookingId, status } = call.request;
     this.bookingService
       .updateBookingStatus(bookingId, this.mapGrpcStatusToEntity(status))
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Booking status updated successfully",
@@ -104,7 +104,7 @@ export class BookingGrpcController {
     const { bookingId, totalAmount } = call.request;
     this.bookingService
       .updateBookingAmount(bookingId, totalAmount)
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Booking amount updated successfully",

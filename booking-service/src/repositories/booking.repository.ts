@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from "../generated/prisma/client";
 import { PrismaAdapter } from "../../../utils/src/IBase.repository";
 import { BaseRepository } from "./base.repository";
-import { BookingModel, IBookingRepository } from "../interface/IBooking.repository";
+import { IBookingRepository } from "../interface/IBooking.repository";
 import { GetBookingsQueryDto } from "./../dtos/booking.dtos";
 
 type TModel = Prisma.BookingGetPayload<Prisma.BookingFindUniqueArgs>;

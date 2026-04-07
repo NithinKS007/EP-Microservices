@@ -5,7 +5,7 @@ import { GetBookingsQueryDto } from "./../dtos/booking.dtos";
 /**
  * Prisma-backed Booking domain model
  */
-export type BookingModel = Prisma.BookingGetPayload<{}>;
+export type BookingModel = Prisma.BookingGetPayload<Prisma.BookingDefaultArgs>;
 
 /**
  * Types for repository operations
