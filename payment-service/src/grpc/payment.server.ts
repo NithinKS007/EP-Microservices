@@ -39,7 +39,7 @@ export class PaymentGrpcController {
           message: "Payment created successfully",
           paymentId: result.paymentId,
           razorpayOrderId: result.razorpayOrderId,
-          amount: result.amount,
+          amount: Number(result.amount),
           currency: result.currency,
         }),
       )
