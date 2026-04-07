@@ -63,7 +63,7 @@ export class SeatService {
       seen.add(seat.seatNumber);
     }
 
-    await this.unitOfWork.withTransaction(async (tx) => {
+    await this.unitOfWork.withTransaction(async (_tx) => {
       const event = await this.eventRepository.findById(eventId);
       if (!event) {
         throw new NotFoundError("Event not found, Please try again later");
@@ -132,7 +132,12 @@ export class SeatService {
         `The following seats are already booked or temporarily unavailable: ${seats}. Please select different seats and try again.`,
       );
     }
-    const lockedCount = await this.seatRepository.lockSeats(bookingId, eventId, expiresAtDate, seatIds);
+    const lockedCount = await this.seatRepository.lockSeats(
+      bookingId,
+      eventId,
+      expiresAtDate,
+      seatIds,
+    );
     if (lockedCount !== seatIds.length) {
       throw new ConflictError("Failed to lock all requested seats, Please try again later");
     }

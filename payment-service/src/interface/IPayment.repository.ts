@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed Payment domain model
  */
-export type PaymentModel = Prisma.PaymentGetPayload<{}>;
+export type PaymentModel = Prisma.PaymentGetPayload<Prisma.PaymentDefaultArgs>;
 
 /**
  * Types for repository operations

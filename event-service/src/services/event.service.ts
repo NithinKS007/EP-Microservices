@@ -193,7 +193,7 @@ export class EventService {
    * Triggered via: gRPC
    */
   async bulkReleaseSeatsForBookings(bookingIds: string[]) {
-    if(!bookingIds.length) {
+    if (!bookingIds.length) {
       return { affectedCount: 0 };
     }
     const affectedCount = await this.seatRepository.bulkReleaseSeatsForBookings(bookingIds);

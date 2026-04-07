@@ -46,10 +46,11 @@ export class AuthService {
     name: string;
     email: string;
     password: string;
-    role: "ADMIN" | "USER"
+    role: "ADMIN" | "USER";
   }): Promise<void> {
     const { email, password, name, role } = data;
-    if (!email || !password || !name|| !role) throw new Error("Email,password and name are required");
+    if (!email || !password || !name || !role)
+      throw new Error("Email,password and name are required");
 
     if (role === "ADMIN") {
       throw new ValidationError("Invalid role, Please try again later");
@@ -86,7 +87,7 @@ export class AuthService {
     const isPasswordValid = await comparePassword(data.password, response.user.password);
     if (!isPasswordValid) throw new ValidationError("Password is incorrect");
 
-    const { password: userPassword, ...safeUser } = response.user;
+  const { password: _userPassword, ...safeUser } = response.user;
 
     const accessToken = await this.jwtService.createAT({
       id: response.user.id,

@@ -1,7 +1,7 @@
 import { AuthReq, sendResponse, StatusCodes, validateDto } from "../../../utils/src";
 import { Response } from "express";
 import { SeatService } from "./../services/seat.service";
-import { CreateSeatsDto, GetSeatsQueryDto, LockSeatDto } from "./../dtos/seat.dtos";
+import { CreateSeatsDto, GetSeatsQueryDto } from "./../dtos/seat.dtos";
 
 export class SeatController {
   private readonly seatService: SeatService;
@@ -22,13 +22,4 @@ export class SeatController {
     sendResponse(res, StatusCodes.OK, result, "Seats fetched successfully");
   }
 
-  // async lockSeat(req: AuthReq, res: Response) {
-  //   const data = await validateDto(LockSeatDto, {
-  //     ...req.body,
-  //     eventId: req.params.eventId,
-  //     seatId: req.params.seatId,
-  //   });
-  //   const result = await this.seatService.lockSeat(eventId, seatId, dto);
-  //   sendResponse(res, StatusCodes.OK, result, "Seat locked successfully");
-  // }
 }
