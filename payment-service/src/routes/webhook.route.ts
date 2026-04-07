@@ -8,6 +8,10 @@ const router = Router();
 
 const webhookController = container.resolve<WebhookController>("webhookController");
 
-router.post("/razorpay", express.raw({ type: "application/json" }), asyncHandler(webhookController.handle.bind(webhookController)));
+router.post(
+  "/razorpay",
+  express.raw({ type: "application/json" }),
+  asyncHandler(webhookController.handle.bind(webhookController)),
+);
 
 export default router;

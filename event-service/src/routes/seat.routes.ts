@@ -4,7 +4,7 @@ import { asyncHandler } from "../../../utils/src";
 import { CustomMiddleware } from "../../../utils/src/auth.middleware";
 import { SeatController } from "./../controllers/seat.controller";
 
-const router = Router({mergeParams: true});
+const router = Router({ mergeParams: true });
 
 const seatController = container.resolve<SeatController>("seatController");
 const customMiddleware = container.resolve<CustomMiddleware>("customMiddleware");
