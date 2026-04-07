@@ -51,6 +51,10 @@ export class CancelEventSagaConsumer {
     this.eventServiceGrpcClient = eventServiceGrpcClient;
   }
 
+  private normalizeError(error: unknown): Error {
+    return error instanceof Error ? error : new Error("Unknown error");
+  }
+
   /**
    * Processes the cancel-event saga command once and relies on step retries inside the saga.
    * Used in: Cancel Event Saga command consumption
@@ -151,9 +155,10 @@ export class CancelEventSagaConsumer {
           status: "PENDING",
         });
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = this.normalizeError(err);
       logger.error(`Cancel event saga failed permanently sagaId=${sagaId}`);
-      await this.sendToDLQ(message, err);
+      await this.sendToDLQ(message, error);
       return;
     }
   }
@@ -205,15 +210,16 @@ export class CancelEventSagaConsumer {
           },
         );
         return;
-      } catch (err: any) {
+      } catch (err: unknown) {
         attempt++;
+        const error = this.normalizeError(err);
 
         await this.sagaStepRepository.update(
           { id: step.id },
           {
             status: "failed",
             retryCount: attempt,
-            errorMessage: err.message || "Unknown error",
+            errorMessage: error.message,
           },
         );
 
@@ -224,7 +230,7 @@ export class CancelEventSagaConsumer {
               {
                 status: "failed",
                 currentStep: step.stepName,
-                errorMessage: err.message || "Unknown error",
+                errorMessage: error.message,
               },
             );
 
@@ -233,14 +239,14 @@ export class CancelEventSagaConsumer {
               payload: {
                 sagaId,
                 stepName: step.stepName,
-                error: err.message || "Unknown error",
+                error: error.message,
               },
               status: "PENDING",
             });
           });
 
           logger.error(`Saga step failed permanently sagaId=${sagaId} step=${step.stepName}`);
-          throw err;
+          throw error;
         }
 
         const delay = Math.pow(2, attempt) * this.BASE_RETRY_DELAY_MS;
@@ -297,8 +303,9 @@ export class CancelEventSagaConsumer {
           retryCount: 1,
         },
       });
-    } catch (dlqError: any) {
-      logger.error(`Failed to send cancel event saga to DLQ ${dlqError.message}`);
+    } catch (dlqError: unknown) {
+      const error = this.normalizeError(dlqError);
+      logger.error(`Failed to send cancel event saga to DLQ ${error.message}`);
     }
   }
 

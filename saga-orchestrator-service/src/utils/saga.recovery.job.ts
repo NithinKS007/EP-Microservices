@@ -21,6 +21,10 @@ export class SagaRecoveryJob {
     this.unitOfWork = unitOfWork;
   }
 
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown error";
+  }
+
   start() {
     this.cronRunner.schedule("Saga Recovery Job", "*/5 * * * *", async () => {
       await this.recoverAbandonedSagas();
@@ -34,7 +38,7 @@ export class SagaRecoveryJob {
    */
   private async recoverAbandonedSagas() {
     const TIMEOUT_MINUTES = 10;
-    
+
     // Find sagas that haven't been updated in 10 minutes and are still running
     const abandonedSagas = await this.sagaRepository.findAbandonedSagas(TIMEOUT_MINUTES);
 
@@ -60,15 +64,14 @@ export class SagaRecoveryJob {
 
           // Bump updatedAt so we don't pick it up again on the next cron run
           // before the Kafka consumer has a chance to execute.
-          await repos.sagaRepository.update(
-            { id: saga.id },
-            { updatedAt: new Date() }
-          );
+          await repos.sagaRepository.update({ id: saga.id }, { updatedAt: new Date() });
         });
-        
+
         logger.info(`Successfully pushed recovery event for sagaId=${saga.id}`);
-      } catch (err: any) {
-        logger.error(`Failed to push recovery event for sagaId=${saga.id}: ${err.message}`);
+      } catch (err: unknown) {
+        logger.error(
+          `Failed to push recovery event for sagaId=${saga.id}: ${this.getErrorMessage(err)}`,
+        );
       }
     }
   }

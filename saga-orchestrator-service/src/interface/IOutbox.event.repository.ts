@@ -1,7 +1,7 @@
 import { Prisma } from "../generated/prisma/client";
 import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 
-export type OutboxEventModel = Prisma.OutboxEventGetPayload<{}>;
+export type OutboxEventModel = Prisma.OutboxEventGetPayload<Prisma.OutboxEventDefaultArgs>;
 export type OutboxEventCreateData = Prisma.OutboxEventCreateInput;
 export type OutboxEventUpdateData = Prisma.OutboxEventUpdateInput;
 export type OutboxEventWhere = Prisma.OutboxEventWhereInput;

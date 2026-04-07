@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed Saga domain model
  */
-export type SagaModel = Prisma.SagaGetPayload<{}>;
+export type SagaModel = Prisma.SagaGetPayload<Prisma.SagaDefaultArgs>;
 
 /**
  * Types for repository operations

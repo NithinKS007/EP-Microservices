@@ -3,8 +3,8 @@ import { ISagaStep } from "./saga.step.entity";
 export interface ISaga {
   id: string;
 
-  sagaType: string;        // ex: BOOKING_SAGA
-  referenceId: string;     // ex: bookingId
+  sagaType: string; // ex: BOOKING_SAGA
+  referenceId: string; // ex: bookingId
 
   status: SagaStatus;
   currentStep?: string | null;

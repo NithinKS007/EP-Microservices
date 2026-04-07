@@ -44,6 +44,10 @@ export class SagaService {
     this.paymentServiceGrpcClient = paymentServiceGrpcClient;
   }
 
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown error";
+  }
+
   /**
    * Creates or resumes the cancel-event saga command safely.
    * Used in: Cancel Event Saga start
@@ -155,7 +159,10 @@ export class SagaService {
       return await this.buildExistingInitiatedPaymentResponse(existingSaga.id, bookingId);
     }
 
-    if (existingSaga?.status === SagaStatus.in_progress || existingSaga?.status === SagaStatus.started) {
+    if (
+      existingSaga?.status === SagaStatus.in_progress ||
+      existingSaga?.status === SagaStatus.started
+    ) {
       throw new ConflictError("Payment initiation saga is already in progress");
     }
 
@@ -407,13 +414,13 @@ export class SagaService {
         status: "completed",
         ...paymentResult,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.sagaRepository.update(
         { id: sagaId },
         {
           status: "compensating",
           currentStep: "PAYMENT_SERVICE",
-          errorMessage: error.message || "Unknown error",
+          errorMessage: this.getErrorMessage(error),
         },
       );
 
@@ -477,13 +484,13 @@ export class SagaService {
         { id: sagaId },
         { status: "compensated", currentStep: "SEAT_SERVICE", errorMessage: null },
       );
-    } catch (compensationError: any) {
+    } catch (compensationError: unknown) {
       await this.sagaRepository.update(
         { id: sagaId },
         {
           status: "failed",
           currentStep: "SEAT_SERVICE",
-          errorMessage: compensationError.message || "Compensation failed",
+          errorMessage: this.getErrorMessage(compensationError),
         },
       );
       throw compensationError;
@@ -519,10 +526,10 @@ export class SagaService {
         { id: step.id },
         { status: "completed", completedAt: new Date(), errorMessage: null },
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.sagaStepRepository.update(
         { id: step.id },
-        { status: "failed", errorMessage: error.message || "Unknown error" },
+        { status: "failed", errorMessage: this.getErrorMessage(error) },
       );
       throw error;
     }
@@ -558,10 +565,10 @@ export class SagaService {
         { status: "completed", completedAt: new Date(), errorMessage: null },
       );
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       await this.sagaStepRepository.update(
         { id: step.id },
-        { status: "failed", errorMessage: error.message || "Unknown error" },
+        { status: "failed", errorMessage: this.getErrorMessage(error) },
       );
       throw error;
     }

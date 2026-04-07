@@ -31,7 +31,6 @@ export class UpdateSystemRoleRequestDto {
 }
 
 export class FindPaginatedUsersRequestDto {
-
   @IsString()
   @IsNotEmpty()
   @Type(() => Number)
