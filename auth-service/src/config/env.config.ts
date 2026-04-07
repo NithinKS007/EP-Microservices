@@ -19,7 +19,7 @@ interface Env {
   PRT_TTL: number;
 
   CLIENT_URL: string;
-  
+
   DATABASE_URL: string;
 
   EMAIL_USER: string;
@@ -46,7 +46,8 @@ export const envConfig: Env = {
 
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:4000",
 
-  DATABASE_URL: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
+  DATABASE_URL:
+    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
 
   EMAIL_USER: process.env.EMAIL_USER || "email",
   EMAIL_PASS: process.env.EMAIL_PASS || "password",
