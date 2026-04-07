@@ -10,10 +10,7 @@ interface PaymentEventMessage {
 
 interface PaymentEventConfig {
   topic: "payment.success" | "payment.failed" | "payment.refunded";
-  dlqTopic:
-    | "payment.success.dlq"
-    | "payment.failed.dlq"
-    | "payment.refunded.dlq";
+  dlqTopic: "payment.success.dlq" | "payment.failed.dlq" | "payment.refunded.dlq";
 }
 
 export class PaymentEventConsumer {
@@ -35,6 +32,10 @@ export class PaymentEventConsumer {
     this.kafkaService = kafkaService;
     this.bookingServiceGrpcClient = bookingServiceGrpcClient;
     this.eventServiceGrpcClient = eventServiceGrpcClient;
+  }
+
+  private normalizeError(error: unknown): Error {
+    return error instanceof Error ? error : new Error("Unknown error");
   }
 
   /**
@@ -95,12 +96,13 @@ export class PaymentEventConsumer {
         await action();
         logger.info(`Processed ${config.topic} successfully eventId=${eventId}`);
         return;
-      } catch (err: any) {
+      } catch (err: unknown) {
         attempt++;
+        const error = this.normalizeError(err);
 
         if (attempt >= this.MAX_RETRIES) {
           logger.error(`Max retries reached for event ${eventId}. Sending to DLQ.`);
-          await this.sendToDLQ(message, err, config.dlqTopic);
+          await this.sendToDLQ(message, error, config.dlqTopic);
           return;
         }
         const delay = Math.pow(2, attempt) * this.BASE_DELAY;
@@ -181,9 +183,10 @@ export class PaymentEventConsumer {
           retryCount: this.MAX_RETRIES,
         },
       });
-    } catch (dlqError: any) {
+    } catch (dlqError: unknown) {
+      const error = this.normalizeError(dlqError);
       logger.error(
-        `CRITICAL: Failed to send to DLQ eventId=${message.eventId} error=${dlqError.message}`,
+        `CRITICAL: Failed to send to DLQ eventId=${message.eventId} error=${error.message}`,
       );
     }
   }

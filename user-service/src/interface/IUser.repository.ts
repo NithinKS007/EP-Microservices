@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed User domain model
  */
-export type UserModel = Prisma.UserGetPayload<{}>;
+export type UserModel = Prisma.UserGetPayload<Prisma.UserDefaultArgs>;
 
 /**
  * Types for repository operations

@@ -126,9 +126,8 @@ export class PasswordService {
     if (currentPassword === newPassword) {
       throw new ValidationError("New password must be different from current password");
     }
-    const userData = await this.userServiceGrpcClient.findUserById({userId });
-    console.log("user",userData);
-    
+    const userData = await this.userServiceGrpcClient.findUserById({ userId });
+
     if (!userData.user) throw new NotFoundError("User not found, Please try again later");
 
     const pass = await comparePassword(currentPassword, userData.user.password);

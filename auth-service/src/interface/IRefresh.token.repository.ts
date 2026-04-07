@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed RefreshToken domain model
  */
-export type RefreshTokenModel = Prisma.RefreshTokenGetPayload<{}>;
+export type RefreshTokenModel = Prisma.RefreshTokenGetPayload<Prisma.RefreshTokenDefaultArgs>;
 
 /**
  * Types for repository operations

@@ -87,8 +87,9 @@ export class OutboxWorker {
     });
   }
 
-  private async handleFailure(event: OutboxEvent, err: any) {
+  private async handleFailure(event: OutboxEvent, err: unknown) {
     const retryCount = event.retryCount + 1;
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
 
     if (retryCount >= this.MAX_RETRIES) {
       logger.error(`Outbox event failed after ${retryCount} retries`);
@@ -98,7 +99,7 @@ export class OutboxWorker {
         {
           status: "FAILED",
           processedAt: new Date(),
-          error: err.message || "Unknown error",
+          error: errorMessage,
         },
       );
 

@@ -10,7 +10,6 @@ import { OutboxWorker } from "./utils/outbox.worker";
 import { CancelEventSagaConsumer } from "./utils/cancel.event.saga.consumer";
 import { SagaRecoveryJob } from "./utils/saga.recovery.job";
 
-
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 

@@ -1,7 +1,7 @@
 export interface OutboxEvent {
   id: string;
   topic: string;
-  payload: any;
+  payload: unknown;
   status: "PENDING" | "PROCESSING" | "SENT" | "FAILED";
   retryCount: number;
   nextRetryAt: Date;
