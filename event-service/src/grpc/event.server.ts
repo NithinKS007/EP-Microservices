@@ -23,7 +23,13 @@ import { EventService } from "../services/event.service";
 export class EventGrpcController {
   private readonly seatService: SeatService;
   private readonly eventService: EventService;
-  constructor({ seatService, eventService }: { seatService: SeatService; eventService: EventService }) {
+  constructor({
+    seatService,
+    eventService,
+  }: {
+    seatService: SeatService;
+    eventService: EventService;
+  }) {
     this.seatService = seatService;
     this.eventService = eventService;
   }
@@ -51,7 +57,7 @@ export class EventGrpcController {
     const { bookingId } = call.request;
     this.seatService
       .confirmSeats({ bookingId })
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Seats confirmed successfully",
@@ -67,7 +73,7 @@ export class EventGrpcController {
     const { bookingId } = call.request;
     this.seatService
       .releaseSeats({ bookingId })
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Seats released successfully",
@@ -126,8 +132,7 @@ export class EventGrpcController {
             description: event.description || "",
             venueName: event.venueName,
             eventDate: event.eventDate,
-            status:
-              event.status === "CANCELLED" ? EventStatus.CANCELLED : EventStatus.ACTIVE,
+            status: event.status === "CANCELLED" ? EventStatus.CANCELLED : EventStatus.ACTIVE,
             seats: event.seats.map((seat) => ({
               id: seat.id,
               eventId: seat.eventId,

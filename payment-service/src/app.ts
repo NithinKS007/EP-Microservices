@@ -18,7 +18,7 @@ app.get("/", (req: Request, res: Response) => {
   res.json({ status: "ok", service: envConfig.SERVICE_NAME, port: envConfig.PORT });
 });
 
-app.use("/api/v1/payment",paymentRoutes)
+app.use("/api/v1/payment", paymentRoutes);
 
 // Error handling
 app.use(notFoundMiddleware);

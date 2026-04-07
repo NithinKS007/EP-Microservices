@@ -68,11 +68,13 @@ export class EventRepository
     };
   }
 
-  async findEventsByIdsWithSeats(eventIds: string[]): Promise<Prisma.EventGetPayload<{
-    include: {
-      seats: true;
-    };
-  }>[]> {
+  async findEventsByIdsWithSeats(eventIds: string[]): Promise<
+    Prisma.EventGetPayload<{
+      include: {
+        seats: true;
+      };
+    }>[]
+  > {
     if (eventIds.length === 0) {
       return [];
     }

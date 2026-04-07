@@ -2,6 +2,6 @@ export interface PaymentEvent {
   id: string;
   paymentId?: string | null;
   type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   createdAt: Date;
 }

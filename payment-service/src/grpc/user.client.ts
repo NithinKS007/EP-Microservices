@@ -1,10 +1,11 @@
 import { envConfig } from "../config/env.config";
-import { createCircuitBreaker, createGrpcClient, fromGrpcError, Metadata } from "../../../utils/src";
 import {
-  UserServiceClient,
-  FindUserByIdRequest,
-  FindUserByIdResponse,
+  createCircuitBreaker,
+  createGrpcClient,
+  fromGrpcError,
+  Metadata,
 } from "../../../utils/src";
+import { UserServiceClient, FindUserByIdRequest, FindUserByIdResponse } from "../../../utils/src";
 
 export class UserServiceGrpcClient {
   private readonly GRPC_TIMEOUT_MS = 4000;

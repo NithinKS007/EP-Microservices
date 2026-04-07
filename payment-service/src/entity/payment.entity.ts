@@ -18,9 +18,9 @@ export interface Payment {
   status: PaymentStatus;
 
   provider: string;
-  providerRef?: string|null
+  providerRef?: string | null;
 
-  paymentEvents?: PaymentEvent[]|null[]|undefined[]
+  paymentEvents?: PaymentEvent[] | null[] | undefined[];
 
   createdAt: Date;
   updatedAt: Date;

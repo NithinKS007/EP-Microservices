@@ -29,8 +29,7 @@ export const envConfig: Env = {
   PORT: Number(process.env.PORT) || 3000,
   SERVICE_NAME: process.env.SERVICE_NAME || "payment-service",
   DATABASE_URL:
-    process.env.DATABASE_URL ||
-    "postgresql://postgres:postgres@localhost:5432/postgres",
+    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/postgres",
 
   KAFKA_BROKERS: process.env.KAFKA_BROKERS || "localhost:9092",
   KAFKA_CLIENT_ID: process.env.KAFKA_CLIENT_ID || "payment-service",
@@ -38,11 +37,11 @@ export const envConfig: Env = {
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "false",
 
   NGROK_AUTHTOKEN: process.env.NGROK_AUTHTOKEN || "1",
-  
+
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "rzp_test_1",
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "rzp_test_1",
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "rzp_test_1",
-  
+
   BOOKING_SERVICE_URL_GRPC: process.env.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   EVENT_SERVICE_URL_GRPC: process.env.EVENT_SERVICE_URL_GRPC || "event:50052",
   SAGA_SERVICE_URL_GRPC: process.env.SAGA_SERVICE_URL_GRPC || "saga-orchestrator:50055",

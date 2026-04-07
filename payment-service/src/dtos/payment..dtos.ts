@@ -1,19 +1,4 @@
-import {
-  IsUUID,
-  IsString,
-  IsNotEmpty,
-  IsEnum,
-  IsNumber,
-  IsPositive,
-  IsOptional,
-} from "class-validator";
-
-enum PaymentStatus {
-  INITATED = "INITATED",
-  SUCCESS = "SUCCESS",
-  FAILED = "FAILED",
-  REFUNDED = "REFUNDED",
-}
+import { IsUUID, IsString, IsNotEmpty, IsNumber, IsPositive, IsOptional } from "class-validator";
 
 export class CreatePaymentDto {
   @IsUUID()
@@ -38,7 +23,6 @@ export class CreatePaymentDto {
   @IsString()
   providerRef?: string;
 }
-
 
 export enum WEBHOOK_EVENT_TYPE {
   PAYMENT_CAPTURED = "payment.captured",

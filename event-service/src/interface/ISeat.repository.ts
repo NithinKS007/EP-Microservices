@@ -5,7 +5,7 @@ import { GetSeatsQueryDto } from "./../dtos/seat.dtos";
 /**
  * Prisma-backed Seat domain model
  */
-export type SeatModel = Prisma.SeatGetPayload<{}>;
+export type SeatModel = Prisma.SeatGetPayload<Prisma.SeatDefaultArgs>;
 
 /**
  * Repository operation types
