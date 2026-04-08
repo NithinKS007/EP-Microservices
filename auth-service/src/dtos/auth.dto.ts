@@ -49,6 +49,11 @@ export class SigninRequestDto {
   ip!: string;
 }
 
+export class CheckEmailAvailabilityRequestDto {
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  email!: string;
+}
+
 export class RefreshTokenRequestDto {
   @IsString()
   refreshToken!: string;

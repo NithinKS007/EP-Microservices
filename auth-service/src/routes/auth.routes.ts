@@ -14,6 +14,10 @@ const customMiddleware = container.resolve<CustomMiddleware>("customMiddleware")
 router.use(customMiddleware.metaData.bind(customMiddleware));
 router.use(customMiddleware.requestLogger.bind(customMiddleware));
 
+router.get(
+  "/email/check",
+  asyncHandler(authController.checkEmailAvailability.bind(authController)),
+);
 router.post("/sign-up", asyncHandler(authController.signup.bind(authController)));
 router.post("/sign-in", asyncHandler(authController.signin.bind(authController)));
 router.post("/password-reset", asyncHandler(passController.sendResetPassLink.bind(passController)));
