@@ -4,7 +4,7 @@ import { PaymentService } from "../services/payment.service";
 import { envConfig } from "../config/env.config";
 import { AuthReq, logger, StatusCodes } from "../../../utils/src";
 import { ValidationError } from "../../../utils/src/error.handling.middleware";
-import { WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
+import { WEBHOOK_EVENT_TYPE } from "../dtos/payment.dtos";
 import { sendResponse } from "../../../utils/src";
 
 export class WebhookController {

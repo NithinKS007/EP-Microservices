@@ -1,7 +1,7 @@
 import { createContainer, asClass, asValue } from "awilix";
 import { BookingService } from "./services/booking.service";
 import { BookingRepository } from "./repositories/booking.repository";
-import { BookingSeatRepository } from "repositories/booking.seat.repository";
+import { BookingSeatRepository } from "./repositories/booking.seat.repository";
 import { KafkaService } from "../../utils/src/kafka.service";
 import { BookingController } from "./controllers/booking.controller";
 import { envConfig } from "./config/env.config";

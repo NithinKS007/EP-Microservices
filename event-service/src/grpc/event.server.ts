@@ -132,7 +132,7 @@ export class EventGrpcController {
             description: event.description || "",
             venueName: event.venueName,
             eventDate: event.eventDate,
-            status: event.status === "CANCELLED" ? EventStatus.CANCELLED : EventStatus.ACTIVE,
+            status: event.status === "CANCELLED" ? EventStatus.EVENT_STATUS_CANCELLED : EventStatus.EVENT_STATUS_ACTIVE,
             seats: event.seats.map((seat) => ({
               id: seat.id,
               eventId: seat.eventId,
@@ -156,22 +156,22 @@ export class EventGrpcController {
   private mapSeatStatus(status: "AVAILABLE" | "LOCKED" | "SOLD"): SeatStatus {
     switch (status) {
       case "LOCKED":
-        return SeatStatus.LOCKED;
+        return SeatStatus.SEAT_STATUS_LOCKED
       case "SOLD":
-        return SeatStatus.SOLD;
+        return SeatStatus.SEAT_STATUS_SOLD;
       default:
-        return SeatStatus.AVAILABLE;
+        return SeatStatus.SEAT_STATUS_AVAILABLE;
     }
   }
 
   private mapSeatTier(tier: "VIP" | "REGULAR" | "ECONOMY"): SeatTier {
     switch (tier) {
       case "VIP":
-        return SeatTier.VIP;
+        return SeatTier.SEAT_TIER_VIP
       case "REGULAR":
-        return SeatTier.REGULAR;
+        return SeatTier.SEAT_TIER_REGULAR;
       default:
-        return SeatTier.ECONOMY;
+        return SeatTier.SEAT_TIER_ECONOMY;
     }
   }
 }

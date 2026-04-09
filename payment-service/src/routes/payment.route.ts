@@ -5,7 +5,7 @@ import { asyncHandler, CustomMiddleware } from "../../../utils/src";
 
 const router = Router();
 
-const bookingController = container.resolve<PaymentController>("bookingController");
+const bookingController = container.resolve<PaymentController>("paymentController");
 const customMiddleware = container.resolve<CustomMiddleware>("customMiddleware");
 
 router.use(customMiddleware.context.bind(customMiddleware));

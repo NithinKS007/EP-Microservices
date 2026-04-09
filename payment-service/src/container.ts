@@ -1,7 +1,7 @@
 import { createContainer, asClass, asValue } from "awilix";
 import { PaymentService } from "./services/payment.service";
 import { PaymentRepository } from "./repositories/payment.repository";
-import { PaymentEventRepository } from "repositories/payment.event.repository";
+import { PaymentEventRepository } from "./repositories/payment.event.repository";
 import { KafkaService } from "../../utils/src/kafka.service";
 import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";

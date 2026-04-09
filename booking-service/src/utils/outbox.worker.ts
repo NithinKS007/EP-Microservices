@@ -10,7 +10,7 @@ export class OutboxWorker {
   private readonly BASE_DELAY_MS = 1000;
   private readonly MAX_DELAY_MS = 60000;
   private readonly BATCH_SIZE = 50;
-  private readonly POLL_INTERVAL = 500;
+  private readonly POLL_INTERVAL = 5000;
   private isRunning = false;
 
   constructor({

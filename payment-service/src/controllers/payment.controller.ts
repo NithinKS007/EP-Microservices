@@ -7,7 +7,7 @@ import {
   GetPaymentByIdRequestDto,
   InitiatePaymentRequestDto,
   RefundPaymentRequestDto,
-} from "dtos/payment..dtos";
+} from "../dtos/payment.dtos";
 import { SagaServiceGrpcClient } from "../grpc/saga.client";
 
 export class PaymentController {

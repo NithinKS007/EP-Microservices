@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { notFoundMiddleware, errorMiddleware } from "../../utils/src";
+import { notFoundMiddleware, errorMiddleware } from "./../../utils/src"
 import { envConfig } from "./config/env.config";
 import webhookRoutes from "./routes/webhook.route";
 import paymentRoutes from "./routes/payment.route";

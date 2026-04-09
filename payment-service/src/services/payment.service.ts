@@ -13,13 +13,13 @@ import {
   EmailService,
   logger,
 } from "../../../utils/src/index";
-import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment..dtos";
+import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment.dtos";
 import { envConfig } from "../config/env.config";
 import Razorpay from "razorpay";
 import { Orders } from "razorpay/dist/types/orders";
 import { Refunds } from "razorpay/dist/types/refunds";
 import { UnitOfWork } from "../repositories/unity.of.work";
-import { UserServiceGrpcClient } from "grpc/user.client";
+import { UserServiceGrpcClient } from "./../grpc/user.client";
 import { PaymentStatus } from "../generated/prisma/client";
 
 export class PaymentService {
