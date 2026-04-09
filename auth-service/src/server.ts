@@ -1,9 +1,10 @@
 import "reflect-metadata";
 import { container } from "./container";
-import { KafkaService, logger } from "../../utils/src";
+import { KafkaService, logger, RedisService } from "../../utils/src";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { TokenCleanupJob } from "./utils/cronjob";
+import { EmailAvailabilityService } from "./services/email.availability.service";
 
 /**
  * Gracefully shuts down the server upon receiving termination signals.
@@ -15,13 +16,18 @@ import { TokenCleanupJob } from "./utils/cronjob";
  */
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
-  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
 
   try {
-    console.log("✅ Graceful shutdown completed");
+    const redisService = container.resolve<RedisService>("redisService");
+    if (redisService.isConnected()) {
+      await redisService.disconnect();
+    }
+
+    console.log("Graceful shutdown completed");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error during graceful shutdown:", error);
+    console.error("Error during graceful shutdown:", error);
     process.exit(1);
   }
 };
@@ -48,22 +54,34 @@ const startServer = async () => {
       );
     });
 
-    /** Connect producer and consumer */
-
     const kafkaService = container.resolve<KafkaService>("kafkaService");
+    const redisService = container.resolve<RedisService>("redisService");
+    const emailAvailabilityService =
+      container.resolve<EmailAvailabilityService>("emailAvailabilityService");
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
     }
 
+    try {
+      await redisService.connect();
+      await emailAvailabilityService.initializeBloomFilter();
+      logger.info("Auth-service email Bloom/Redis index connected");
+    } catch (error) {
+      logger.warn(
+        `Auth-service Redis unavailable. Email availability checks will fall back to database only. ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+      );
+    }
+
     const tokenCleanupJob = container.resolve<TokenCleanupJob>("tokenCleanupJob");
     tokenCleanupJob.start();
+
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
-        console.error(`❌ Port ${envConfig.PORT} is already in use`);
+        console.error(`Port ${envConfig.PORT} is already in use`);
       } else {
-        console.error("❌ Server error:", error);
+        console.error("Server error:", error);
       }
       process.exit(1);
     });

@@ -8,6 +8,7 @@ import {
   CronRunner,
   EmailService,
   CustomMiddleware,
+  RedisService,
 } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 import { UserServiceGrpcClient } from "./grpc/user.client";
@@ -17,6 +18,7 @@ import { PasswordController } from "./controllers/password.controller";
 import { PasswordService } from "./services/password.service";
 import { PasswordResetTokenRepository } from "./repositories/password.token.repository";
 import { prisma } from "./utils/dbconfig";
+import { EmailAvailabilityService } from "./services/email.availability.service";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -27,9 +29,12 @@ const accessSecret = envConfig.JWT_ACCESS_TOKEN_SECRET;
 const refreshSecret = envConfig.JWT_REFRESH_TOKEN_SECRET;
 const accessExpiration = envConfig.JWT_ACCESS_TOKEN_EXPIRATION;
 const refreshExpiration = envConfig.JWT_REFRESH_TOKEN_EXPIRATION;
-
 const emailUser = envConfig.EMAIL_USER;
 const emailPass = envConfig.EMAIL_PASS;
+const redisHost = envConfig.REDIS_HOST;
+const redisPort = envConfig.REDIS_PORT;
+const redisPassword = envConfig.REDIS_PASSWORD;
+const redisDb = envConfig.REDIS_DB;
 
 container.register({
   prisma: asValue(prisma),
@@ -38,6 +43,7 @@ container.register({
 container.register({
   authService: asClass(AuthService).scoped(),
   passwordService: asClass(PasswordService).scoped(),
+  emailAvailabilityService: asClass(EmailAvailabilityService).scoped(),
   authController: asClass(AuthController).scoped(),
   passwordController: asClass(PasswordController).scoped(),
 
@@ -67,6 +73,14 @@ container.register({
     .inject(() => ({
       emailUser,
       emailPass,
+    })),
+  redisService: asClass(RedisService)
+    .scoped()
+    .inject(() => ({
+      host: redisHost,
+      port: redisPort,
+      password: redisPassword,
+      db: redisDb,
     })),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });

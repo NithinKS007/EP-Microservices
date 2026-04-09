@@ -3,6 +3,7 @@ import { AuthReq, JwtService, sendResponse, StatusCodes, WithMetaData } from "..
 import { validateDto } from "../../../utils/src";
 import { AuthService } from "./../services/auth.service";
 import {
+  CheckEmailAvailabilityRequestDto,
   RefreshTokenRequestDto,
   SigninRequestDto,
   SignOutRequestDto,
@@ -22,6 +23,13 @@ export class AuthController {
     const data = await validateDto(SignupRequestDto, req.body);
     await this.authService.signup(data);
     sendResponse(res, StatusCodes.Created, null, "User created successfully");
+  }
+
+  async checkEmailAvailability(req: Request, res: Response): Promise<void> {
+    const data = await validateDto(CheckEmailAvailabilityRequestDto, req.query);
+    const result = await this.authService.checkEmailAvailability(data.email);
+    const exists = result.available ? "Email is available" : "Email already exists";
+    sendResponse(res, StatusCodes.OK, result, exists);
   }
 
   async signin(req: WithMetaData, res: Response): Promise<void> {

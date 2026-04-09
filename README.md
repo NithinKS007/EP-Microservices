@@ -1,6 +1,6 @@
 # Event Booking Platform Microservices
 
-Distributed event-booking backend built around bounded-context services for identity, catalog, booking, payment, and orchestration. The system uses an API gateway for north-south traffic, Kafka for asynchronous coordination, gRPC for low-latency internal RPC, and PostgreSQL-backed Prisma models per service.
+Distributed event-booking backend built around bounded-context services for  booking, payment, and orchestration. The system uses an API gateway, Kafka for asynchronous coordination, gRPC for low-latency internal RPC, and PostgreSQL-backed Prisma models per service.
 
 ## Executive Summary
 
@@ -48,19 +48,6 @@ This repository also now implements `event-service` gRPC `FindEventsByIdsWithSea
 - Kafka
 - gRPC
 - Docker Compose for local development
-
-## Unique Engineering Value
-
-The primary differentiator of this codebase is architectural separation rather than a published benchmark target. It combines:
-
-- event-driven coordination for cross-service workflows
-- synchronous HTTP ingress for client simplicity
-- gRPC for internal service efficiency
-- isolated data ownership per service
-
-This is the right foundation for a platform that must evolve toward higher throughput, stricter SLOs, and safer operational independence over time.
-
-No validated throughput, latency, or availability benchmark is currently checked into the repository. Production SLOs should be established from telemetry and load testing, not from README claims.
 
 ## System Architecture
 
@@ -175,15 +162,15 @@ This repository is intentionally optimized for local developer speed today. Prod
 
 | Concern | Local Development | Production Target |
 | --- | --- | --- |
-| Runtime | `docker-compose.yml` on a single developer machine | Kubernetes on EKS/GKE or another managed orchestrator |
+| Runtime | `docker-compose.yml` on a single developer machine | Kubernetes or another managed orchestrator |
 | Container behavior | Bind mounts + `nodemon` hot reload | Immutable images, rolling or canary deployment |
 | Ingress | Direct gateway container exposure on `localhost:3000` | WAF + external load balancer + ingress controller |
 | Network isolation | Single Docker bridge network | Public and private subnets, security groups, egress controls |
-| Service discovery | Docker DNS | Kubernetes service discovery + service mesh or internal DNS |
+| Service discovery | Docker DNS | Kubernetes service discovery + service mesh |
 | Authentication | Service-owned JWT flow and env-based secrets | OIDC for workforce and platform identity, workload IAM, KMS-backed secrets |
 | Authorization | Application-layer auth checks | Defense in depth with IAM, network policies, and application RBAC |
 | Secrets | `.env` files loaded by Compose | Managed secrets with rotation, audit trails, and short-lived credentials |
-| Database | Single local PostgreSQL container | Managed PostgreSQL or Aurora/RDS with Multi-AZ, PITR, and connection pooling |
+| Database | Single local PostgreSQL container | Managed PostgreSQL and connection pooling |
 | Cache | Single local Redis container | Managed Redis with replication, persistence, and failover |
 | Messaging | Single local Kafka broker | Managed Kafka or multi-broker Kafka with replication and partition planning |
 | Schema changes | Manual `prisma:migrate:dev` during development | Backward-compatible migrations, `prisma migrate deploy`, release-gated rollout |

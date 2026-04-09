@@ -8,6 +8,7 @@ export { codeGenerator } from "./code-generator";
 export { logger } from "./logger";
 export { DatabaseAdapter } from "./IBase.repository";
 export { KafkaService } from "./kafka.service";
+export { RedisService } from "./redis.service";
 export { createCircuitBreaker } from "./circuit.breaker";
 export { JwtService } from "./jwt.service";
 export { createGrpcClient } from "./grpc/grpc.client";

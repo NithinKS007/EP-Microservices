@@ -14,33 +14,64 @@ import {
 } from "../../../utils/src/error.handling.middleware";
 import { IRefreshTokenRepository } from "./../interface/IRefresh.token.repository";
 import { envConfig } from "./../config/env.config";
+import { EmailAvailabilityResult, EmailAvailabilityService } from "./email.availability.service";
 
 export class AuthService {
   private readonly userServiceGrpcClient: UserServiceGrpcClient;
   private readonly jwtService: JwtService;
   private readonly tokenService: TokenService;
   private readonly refreshTokenRepository: IRefreshTokenRepository;
+  private readonly emailAvailabilityService: EmailAvailabilityService;
   constructor({
     userServiceGrpcClient,
     jwtService,
     tokenService,
     refreshTokenRepository,
+    emailAvailabilityService,
   }: {
     userServiceGrpcClient: UserServiceGrpcClient;
     jwtService: JwtService;
     tokenService: TokenService;
     refreshTokenRepository: IRefreshTokenRepository;
+    emailAvailabilityService: EmailAvailabilityService;
   }) {
     this.userServiceGrpcClient = userServiceGrpcClient;
     this.jwtService = jwtService;
     this.tokenService = tokenService;
     this.refreshTokenRepository = refreshTokenRepository;
+    this.emailAvailabilityService = emailAvailabilityService;
   }
 
   /**
-   * Registers a new end user after checking email uniqueness.
-   * Used in: Auth signup flow
-   * Triggered via: REST
+   * Public availability-check entry used by the auth route.
+   *
+   * Why this method exists:
+   * - the frontend can ask for email availability before signup
+   * - auth-service keeps orchestration in one place
+   * - the real cache/Bloom/database sequence stays delegated to
+   *   EmailAvailabilityService
+   */
+  async checkEmailAvailability(email: string): Promise<EmailAvailabilityResult> {
+    if (!email) {
+      throw new ValidationError("Email is required");
+    }
+
+    return await this.emailAvailabilityService.checkEmailAvailability(email);
+  }
+
+  /**
+   * Signup write flow.
+   *
+   * What happens here:
+   * 1. validate the input
+   * 2. reject invalid ADMIN self-signup attempts
+   * 3. call the email-availability read flow
+   * 4. if available, create the user through user-service
+   * 5. after the write succeeds, warm Redis exact cache and Bloom bits
+   *
+   * Why the cache/Bloom update happens after the DB write:
+   * if Redis/Bloom were updated first and the DB insert failed, the system could
+   * falsely mark an email as already taken.
    */
   async signup(data: {
     name: string;
@@ -56,13 +87,14 @@ export class AuthService {
       throw new ValidationError("Invalid role, Please try again later");
     }
 
-    const userData = await this.userServiceGrpcClient.findUserByEmail({ email });
-    if (userData.user) throw new ConflictError("Email already exists");
+    const availability = await this.emailAvailabilityService.checkEmailAvailability(email);
+    if (!availability.available) throw new ConflictError("Email already exists");
 
     await this.userServiceGrpcClient.createUser({
       ...data,
       password: await hashPassword(password),
     });
+    await this.emailAvailabilityService.rememberExistingEmail(email);
   }
 
   /**
@@ -87,7 +119,14 @@ export class AuthService {
     const isPasswordValid = await comparePassword(data.password, response.user.password);
     if (!isPasswordValid) throw new ValidationError("Password is incorrect");
 
-  const { password: _userPassword, ...safeUser } = response.user;
+    const safeUser = {
+      id: response.user.id,
+      name: response.user.name,
+      email: response.user.email,
+      role: response.user.role,
+      createdAt: response.user.createdAt,
+      updatedAt: response.user.updatedAt,
+    };
 
     const accessToken = await this.jwtService.createAT({
       id: response.user.id,
