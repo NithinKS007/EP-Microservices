@@ -12,6 +12,7 @@ const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics: { topic: string }[] = [];
 
 container.register({
   prisma: asValue(prisma),
@@ -26,6 +27,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
   userController: asClass(UserController).scoped(),
   userGrpcController: asClass(UserGrpcController).scoped(),

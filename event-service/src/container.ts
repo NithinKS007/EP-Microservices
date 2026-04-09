@@ -20,6 +20,7 @@ const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics: { topic: string }[] = [];
 
 const emailUser = envConfig.EMAIL_USER;
 const emailPass = envConfig.EMAIL_PASS;
@@ -52,6 +53,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
   emailService: asClass(EmailService)
     .scoped()

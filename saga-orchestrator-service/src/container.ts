@@ -19,6 +19,12 @@ const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics = [
+  { topic: "saga.cancel.event.requested" },
+  { topic: "saga.cancel.event.completed" },
+  { topic: "saga.cancel.event.failed" },
+  { topic: "saga.cancel.event.dlq" },
+];
 
 container.register({
   prisma: asValue(prisma),
@@ -28,6 +34,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
   sagaService: asClass(SagaService).scoped(),
 

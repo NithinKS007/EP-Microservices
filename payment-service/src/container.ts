@@ -22,6 +22,14 @@ const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics = [
+  { topic: "payment.success" },
+  { topic: "payment.failed" },
+  { topic: "payment.refunded" },
+  { topic: "payment.success.dlq" },
+  { topic: "payment.failed.dlq" },
+  { topic: "payment.refunded.dlq" },
+];
 
 container.register({
   prisma: asValue(prisma),
@@ -41,6 +49,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
 
   paymentGrpcController: asClass(PaymentGrpcController).scoped(),

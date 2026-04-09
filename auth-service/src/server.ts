@@ -6,6 +6,8 @@ import { envConfig } from "./config/env.config";
 import { TokenCleanupJob } from "./utils/cronjob";
 import { EmailAvailabilityService } from "./services/email.availability.service";
 
+let kafkaService: KafkaService | null = null;
+
 /**
  * Gracefully shuts down the server upon receiving termination signals.
  * Performs any necessary cleanup before exiting the process.
@@ -19,6 +21,10 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
 
   try {
+    if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
+      await kafkaService.disconnect();
+    }
+
     const redisService = container.resolve<RedisService>("redisService");
     if (redisService.isConnected()) {
       await redisService.disconnect();
@@ -54,7 +60,7 @@ const startServer = async () => {
       );
     });
 
-    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    kafkaService = container.resolve<KafkaService>("kafkaService");
     const redisService = container.resolve<RedisService>("redisService");
     const emailAvailabilityService =
       container.resolve<EmailAvailabilityService>("emailAvailabilityService");

@@ -24,6 +24,7 @@ const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics: { topic: string }[] = [];
 
 const accessSecret = envConfig.JWT_ACCESS_TOKEN_SECRET;
 const refreshSecret = envConfig.JWT_REFRESH_TOKEN_SECRET;
@@ -53,6 +54,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
   jwtService: asClass(JwtService)
     .scoped()
