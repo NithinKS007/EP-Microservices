@@ -1,335 +1,62 @@
-# Email Availability Flow With Redis + Bloom Filter
+# Email Availability Flow With Native Redis Bloom
 
-This document explains the full email availability implementation added to this project.
+This document explains the email availability flow as it is currently implemented in this repo.
 
 Goal:
-- help a developer understand the exact flow in this repo
-- explain why Redis and Bloom filter are used together
-- explain why the database is still required
-- make it easy to re-build the same design in another project
+- show the exact read/write path used today
+- explain how native Redis Bloom is used
+- clarify where Redis is only an optimization and where the database still matters
 
-## 1. Problem We Are Solving
+## 1. Problem
 
-When a user signs up, the system must answer:
+When a user signs up, the system needs to answer:
 
 `Does this email already exist?`
 
-In a very small app, we would just query the database directly every time.
+The current implementation uses a layered approach so repeated availability checks do not always hit the database first.
 
-At scale, that becomes expensive because:
-- signup forms may call "check availability" many times
-- frontend apps may validate on every blur or keystroke
-- repeated exact existence checks can add unnecessary database traffic
+Current layers:
 
-So this project now uses a layered read path:
+1. Native Redis Bloom filter
+2. Exact Redis email-exists cache
+3. user-service / database lookup
 
-1. Redis exact cache
-2. Bloom filter stored in Redis bitset
-3. user-service / database fallback
+The database is still the final source of truth for writes.
 
-The database is still the final truth.
+## 2. Files Involved
 
-## 2. Where This Fits In This Project
+### Auth-service
 
-This feature belongs mainly to the user-auth flow because:
-- [user.prisma](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\prisma\schemas\user.prisma) has `email String @unique`
-- `auth-service` already orchestrates signup and signin
-- `user-service` owns user persistence
-
-So the responsibility split is:
-
-- `auth-service`: fast read orchestration and signup orchestration
-- `user-service`: exact user lookup and actual database insert
-- PostgreSQL: final uniqueness guarantee
-- Redis: fast cache + Bloom bitset storage
-
-## 3. Files Involved
-
-### Auth-service files
-
-- [auth.routes.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\routes\auth.routes.ts)
-- [auth.controller.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\controllers\auth.controller.ts)
-- [auth.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\auth.service.ts)
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-- [container.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\container.ts)
-- [server.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\server.ts)
-- [env.config.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\config\env.config.ts)
-- [auth.dto.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\dtos\auth.dto.ts)
+- `auth-service/src/services/auth.service.ts`
+- `auth-service/src/services/email.availability.service.ts`
+- `auth-service/src/config/env.config.ts`
+- `auth-service/src/server.ts`
 
 ### Shared utils
 
-- [redis.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\utils\src\redis.service.ts)
-- [index.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\utils\src\index.ts)
-
-### User-service files
-
-- [user.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\services\user.service.ts)
-- [user.repository.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\repositories\user.repository.ts)
-- [user.server.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\grpc\user.server.ts)
+- `utils/src/redis.service.ts`
 
 ### Infra
 
-- [docker-compose.yml](EVENT-BOOKING-PLATFORM-MICROSERVICES\docker-compose.yml)
+- `docker-compose.yml`
 
-## 4. New Route
+## 3. Redis Runtime
 
-The public route is:
+The compose file pins Redis to:
 
-`GET /api/v1/auth/email/check?email=test@example.com`
+- `redis:8.6.2-alpine`
 
-Defined in:
-- [auth.routes.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\routes\auth.routes.ts)
+The current implementation uses native Bloom commands exposed by Redis:
 
-This route is useful for:
-- signup page pre-check
-- frontend validation before submit
-- testing the Redis/Bloom/DB layered flow without actually creating a user
+- `BF.RESERVE`
+- `BF.ADD`
+- `BF.EXISTS`
 
-## 5. Full Read Flow
+No manual hash math or `SETBIT` / `GETBIT` logic is used in the email availability service anymore.
 
-This is the step-by-step execution path when a client checks an email.
+## 4. Environment Variables
 
-### Step 1: Route receives request
-
-File:
-- [auth.routes.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\routes\auth.routes.ts)
-
-Flow:
-- request enters `GET /email/check`
-- forwarded to `AuthController.checkEmailAvailability`
-
-### Step 2: Controller validates input
-
-File:
-- [auth.controller.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\controllers\auth.controller.ts)
-
-Flow:
-- validates `req.query.email` using `CheckEmailAvailabilityRequestDto`
-- calls `authService.checkEmailAvailability(email)`
-
-Why:
-- controller should validate transport input
-- business logic should remain in services
-
-### Step 3: Auth service delegates to email availability service
-
-File:
-- [auth.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\auth.service.ts)
-
-Flow:
-- checks email presence
-- delegates to `EmailAvailabilityService`
-
-Why:
-- keeps auth orchestration readable
-- avoids duplicating Redis/Bloom logic in multiple auth methods
-
-### Step 4: Normalize the email
-
-File:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-
-Flow:
-- trims spaces
-- lowercases the email
-
-Why:
-- email checks must be consistent
-- `Test@Email.com` and `test@email.com` should map to the same cache and Bloom positions
-
-### Step 5: Exact Redis cache check
-
-Files:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-- [redis.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\utils\src\redis.service.ts)
-
-Key format:
-- `auth:email:exists:<normalizedEmail>`
-
-Flow:
-- if Redis key value is `"1"`, email is definitely taken
-- return immediately
-
-Why:
-- this is the fastest exact positive path
-- no Bloom math needed
-- no database call needed
-
-### Step 6: Bloom filter check
-
-File:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-
-Flow:
-- hash the normalized email twice:
-  - `sha256`
-  - `md5`
-- derive multiple Bloom positions from those hashes
-- read those positions from the Redis bitset key
-
-Bloom bitset key:
-- `auth:email:bloom`
-
-What the result means:
-- if any bit is `0`: email is definitely not in the Bloom filter
-- if all bits are `1`: email might be in the Bloom filter
-
-Why this is useful:
-- Bloom filter stores existence signatures in a tiny memory footprint
-- much cheaper than storing every email in an exact set for large datasets
-
-### Step 7: Exact fallback to user-service / DB
-
-Files:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-- [user.client.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\grpc\user.client.ts)
-- [user.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\services\user.service.ts)
-- [user.repository.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\repositories\user.repository.ts)
-
-Flow:
-- auth-service calls user-service gRPC `findUserByEmail`
-- user-service queries Postgres
-- returns exact answer
-
-Why:
-- database is the source of truth
-- caches and Bloom filters optimize reads but do not replace correctness
-
-### Step 8: Warm the fast path if the email exists
-
-File:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-
-Flow:
-- if DB confirms the email exists:
-  - set exact Redis key
-  - set Bloom bits
-
-Why:
-- next time the same email is checked, the read path becomes cheaper
-
-## 6. Full Signup Write Flow
-
-This is the path when a new user signs up.
-
-### Step 1: Signup request reaches auth-service
-
-Files:
-- [auth.routes.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\routes\auth.routes.ts)
-- [auth.controller.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\controllers\auth.controller.ts)
-
-Flow:
-- request is validated
-- forwarded to `AuthService.signup`
-
-### Step 2: Email availability is checked first
-
-File:
-- [auth.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\auth.service.ts)
-
-Flow:
-- calls `emailAvailabilityService.checkEmailAvailability(email)`
-- if unavailable, throws `ConflictError`
-
-Why:
-- prevents obvious duplicate signups early
-- reduces load on the actual insert path
-
-### Step 3: User is created in user-service
-
-Files:
-- [auth.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\auth.service.ts)
-- [user.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\services\user.service.ts)
-
-Flow:
-- password is hashed in auth-service
-- user-service persists the user
-
-Why user-service still matters:
-- user-service owns user writes
-- Postgres unique constraint is the final guard
-
-### Step 4: Database uniqueness still protects correctness
-
-File:
-- [user.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\user-service\src\services\user.service.ts)
-
-Flow:
-- if Prisma throws `P2002`, service throws `ConflictError("Email already exists")`
-
-Why:
-- even if two requests race at the same time
-- even if cache/Bloom are stale
-- the DB still prevents duplicates
-
-This is a critical real-world pattern.
-
-### Step 5: After successful write, cache and Bloom are updated
-
-Files:
-- [auth.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\auth.service.ts)
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-
-Flow:
-- after create succeeds
-- call `rememberExistingEmail(email)`
-
-Why order matters:
-- if we updated Redis/Bloom before the DB write and DB write failed,
-  we would poison the cache with a false "already exists"
-
-## 7. Redis Data Layout
-
-### Exact cache key
-
-Pattern:
-- `auth:email:exists:<normalizedEmail>`
-
-Example:
-- `auth:email:exists:alice@example.com`
-
-Value:
-- `"1"`
-
-Meaning:
-- exact confirmation that this email is already known to exist
-
-### Bloom filter key
-
-Pattern:
-- `auth:email:bloom`
-
-Stored as:
-- Redis bitset
-
-Meaning:
-- compact existence signature for many emails
-
-## 8. Why Bloom Filter Was Merged Into EmailAvailabilityService
-
-This was done intentionally for this repo because:
-- only one feature currently uses the Bloom logic
-- a separate `BloomFilterService` added one more abstraction layer without much reuse yet
-- keeping hashing + bitset logic in the email service makes the feature easier to learn
-
-This is better for practice right now because a new developer can open one file:
-- [email.availability.service.ts](EVENT-BOOKING-PLATFORM-MICROSERVICES\auth-service\src\services\email.availability.service.ts)
-
-and understand:
-- normalization
-- exact Redis check
-- Bloom hashing
-- Bloom bit reads
-- DB fallback
-- cache warming
-
-all in one place.
-
-If later multiple features use Bloom filters, then extracting a reusable Bloom utility would make sense again.
-
-## 9. Environment Variables Needed
-
-These should be present in `auth-service/.env`.
+These values are read from `auth-service/.env` through `auth-service/src/config/env.config.ts`.
 
 ```env
 REDIS_HOST=redis
@@ -339,107 +66,226 @@ REDIS_DB=0
 
 AUTH_EMAIL_EXISTS_CACHE_PREFIX=auth:email:exists
 AUTH_EMAIL_BLOOM_KEY=auth:email:bloom
-AUTH_EMAIL_BLOOM_SIZE_BITS=1000000
-AUTH_EMAIL_BLOOM_HASH_COUNT=7
+AUTH_EMAIL_BLOOM_ERROR_RATE=0.001
+AUTH_EMAIL_BLOOM_CAPACITY=1000000
+AUTH_EMAIL_BLOOM_EXPANSION=2
 ```
 
-### Meaning of each variable
-
-- `REDIS_HOST`
-  Redis host used by auth-service.
-
-- `REDIS_PORT`
-  Redis port.
-
-- `REDIS_PASSWORD`
-  Redis password. Must match the Redis container setup.
-
-- `REDIS_DB`
-  Logical Redis DB number used by auth-service.
+Meaning:
 
 - `AUTH_EMAIL_EXISTS_CACHE_PREFIX`
-  Prefix for exact email-exists keys.
+  Prefix for exact email confirmation keys.
 
 - `AUTH_EMAIL_BLOOM_KEY`
-  Redis key that stores the Bloom bitset.
+  Key name for the native Redis Bloom filter.
 
-- `AUTH_EMAIL_BLOOM_SIZE_BITS`
-  Size of the Bloom bit array.
-  Larger size usually means fewer false positives but more memory use.
+- `AUTH_EMAIL_BLOOM_ERROR_RATE`
+  Target false-positive rate used during `BF.RESERVE`.
 
-- `AUTH_EMAIL_BLOOM_HASH_COUNT`
-  Number of bit positions used per email.
-  More hashes may reduce false positives up to a point, but also increases read/write work.
+- `AUTH_EMAIL_BLOOM_CAPACITY`
+  Initial filter capacity used during `BF.RESERVE`.
 
-## 10. Why This Is Still Not The Final Production Version
+- `AUTH_EMAIL_BLOOM_EXPANSION`
+  Expansion factor for the scalable Bloom filter.
 
-This implementation is a strong practice version, but not the final large-scale version yet.
+## 5. Shared Redis Wrapper
 
-What is still missing for a fuller production Bloom setup:
-- startup rebuild from all users in DB
-- periodic rebuild job
-- or CDC / Kafka event-driven sync from user-service to auth-service
-- metrics for:
-  - Redis hit rate
-  - Bloom maybe rate
-  - DB fallback count
-  - false positive rate
+`utils/src/redis.service.ts` now exposes native Bloom helpers:
 
-So the current state is:
-- architecture is correct
-- read path is layered correctly
-- DB correctness is preserved
-- Bloom is used as a cheap signal, not as a source of truth
+- `bfReserve(key, errorRate, capacity, options)`
+- `bfAdd(key, item)`
+- `bfExists(key, item)`
 
-## 11. Can This Pattern Be Used Elsewhere In This Project?
+Important behavior:
 
-### Good next candidate
+- `bfReserve` treats `ERR item exists` as a safe, idempotent case and returns `false`
+- `bfAdd` and `bfExists` convert Redis responses into booleans
+- the older `setBit` / `getBit` helpers still exist in the shared utility, but the email availability flow does not use them
 
-`event-service`
+## 6. Bloom Initialization
 
-Schema:
-- [event.prisma](EVENT-BOOKING-PLATFORM-MICROSERVICES\event-service\prisma\schemas\event.prisma)
+`EmailAvailabilityService.initializeBloomFilter()` is responsible for reserving the Bloom filter.
 
-Unique rule:
-- `@@unique([name, venueName, eventDate])`
+What it does:
 
-How to adapt:
-- create normalized key like:
-  `event:<date>:<venue>:<name>`
-- exact Redis key for known existing composite identifiers
-- Bloom filter for cheap maybe/not-present pre-check
-- DB fallback in event-service
+- skips work if Redis is not connected
+- caches successful initialization in memory
+- uses `BF.RESERVE` with:
+  - `AUTH_EMAIL_BLOOM_KEY`
+  - `AUTH_EMAIL_BLOOM_ERROR_RATE`
+  - `AUTH_EMAIL_BLOOM_CAPACITY`
+  - `EXPANSION AUTH_EMAIL_BLOOM_EXPANSION`
 
-### Not a good candidate
+Why it is idempotent:
 
-`booking-service` idempotency key
+- if the filter already exists, Redis returns `ERR item exists`
+- `RedisService.bfReserve()` treats that as expected instead of failing
 
-Why not:
-- idempotency needs exact correctness, not probabilistic pre-checking
-- exact Redis key or distributed lock is the better design
+When it runs:
 
-### Also not very useful
+- during auth-service startup after Redis connects
+- before read checks
+- before write-side Bloom updates
 
-`seat` uniqueness under one event
+## 7. Read Flow
 
-Why not:
-- seats are usually much smaller per event
-- exact Redis Set is easier than Bloom filter
+The public read entrypoint is:
 
-## 12. Rebuild This In Another Project
+- `AuthService.checkEmailAvailability(email)`
 
+That delegates to:
 
-1. Choose one exact unique field
-2. Normalize it consistently
-3. Store exact positive cache in Redis
-4. Store Bloom bitset in Redis
-5. Read flow:
-   - exact Redis
-   - Bloom
-   - DB fallback
-6. Write flow:
-   - DB insert first
-   - then exact Redis + Bloom update
-7. Keep DB unique constraint
-8. Add rebuild/sync if you later want stronger Bloom-driven optimizations
+- `EmailAvailabilityService.checkEmailAvailability(email)`
 
+Current flow:
+
+1. Normalize the email with `trim().toLowerCase()`
+2. Build the exact cache key:
+   `auth:email:exists:<normalizedEmail>`
+3. If Redis is connected, ensure the Bloom filter is reserved
+4. Run `BF.EXISTS auth:email:bloom <normalizedEmail>`
+5. Read the exact Redis cache key
+6. If the exact Redis key is `"1"`, return unavailable immediately
+7. Otherwise call `userServiceGrpcClient.findUserByEmail(...)`
+8. If the database says the user exists, call `rememberExistingEmail(...)`
+9. Return the result
+
+Returned sources currently used by the implementation:
+
+- `redis_exact_cache`
+- `database`
+- `fallback`
+
+Meaning of `bloomMaybePresent`:
+
+- `true`
+  Redis Bloom says the email may be present
+
+- `false`
+  Redis Bloom says the email is not present
+
+- `null`
+  Redis Bloom was not used because the request fell back out of the Redis path
+
+## 8. Double-Check Pattern In Current Code
+
+The current implementation follows this order inside the Redis-backed path:
+
+1. native Bloom check first
+2. exact Redis cache second
+3. database last
+
+What this means:
+
+- Bloom is used as the cheapest maybe/not-present signal
+- exact Redis cache is used as a strong positive confirmation
+- database still provides the exact answer whenever the exact Redis cache is missing
+
+This is the current implementation behavior, even when Bloom returns `false`.
+
+## 9. Write Flow
+
+The write-side warm-up happens after user creation succeeds.
+
+Entry point:
+
+- `AuthService.signup(...)`
+
+Current flow:
+
+1. `checkEmailAvailability(email)` runs first
+2. if available, auth-service calls user-service to create the user
+3. after create succeeds, auth-service calls `rememberExistingEmail(email)`
+
+`rememberExistingEmail(email)` does this:
+
+1. normalize the email
+2. ensure the Bloom filter is reserved
+3. set the exact Redis key to `"1"`
+4. call `BF.ADD auth:email:bloom <normalizedEmail>`
+
+Why the order matters:
+
+- the database write happens before Redis cache/Bloom warming
+- this avoids marking an email as taken when the DB insert fails
+
+## 10. Redis Data Layout
+
+### Exact cache key
+
+Pattern:
+
+- `auth:email:exists:<normalizedEmail>`
+
+Value:
+
+- `"1"`
+
+Meaning:
+
+- exact confirmation that this email is known to exist
+
+### Bloom key
+
+Pattern:
+
+- `auth:email:bloom`
+
+Stored as:
+
+- native Redis Bloom filter
+
+Meaning:
+
+- probabilistic membership signal for existing emails
+
+## 11. Current Fallback Behavior
+
+If the Redis-backed path throws inside `checkEmailAvailability(...)`, the service currently:
+
+- logs a warning
+- returns:
+  - `available: true`
+  - `source: "fallback"`
+  - `bloomMaybePresent: null`
+
+Important note:
+
+- in the current implementation, this fallback path does not perform a database lookup before returning
+
+This section describes the code exactly as it exists today.
+
+## 12. What Changed From The Older Manual Bloom Version
+
+The older documentation described a manual Bloom implementation based on:
+
+- local hashing with `sha256` and `md5`
+- derived bit offsets
+- Redis `SETBIT`
+- Redis `GETBIT`
+- size/hash-count env vars
+
+That is no longer the active implementation.
+
+The current implementation uses:
+
+- `BF.RESERVE`
+- `BF.ADD`
+- `BF.EXISTS`
+- error-rate / capacity / expansion env vars
+
+## 13. Production Notes
+
+What is already good in the current implementation:
+
+- Bloom reservation is idempotent
+- exact Redis cache is kept separate from Bloom
+- signup warms Redis only after DB success
+- the DB-backed user creation path still protects true uniqueness
+
+What is still not covered by the current code:
+
+- rebuilding the Bloom filter from existing users on startup
+- background re-sync or event-driven sync
+- Bloom/cache metrics
+- exact database fallback in the Redis-error path
