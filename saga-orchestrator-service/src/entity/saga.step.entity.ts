@@ -10,9 +10,6 @@ export interface ISagaStep {
 
   errorMessage?: string | null;
 
-  startedAt?: Date | null;
-  completedAt?: Date | null;
-
   createdAt: Date;
   updatedAt: Date;
 }

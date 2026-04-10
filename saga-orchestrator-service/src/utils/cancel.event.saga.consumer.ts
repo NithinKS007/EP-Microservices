@@ -194,7 +194,6 @@ export class CancelEventSagaConsumer {
           { id: step.id },
           {
             status: "in_progress",
-            startedAt: new Date(),
             errorMessage: null,
           },
         );
@@ -205,7 +204,6 @@ export class CancelEventSagaConsumer {
           { id: step.id },
           {
             status: "completed",
-            completedAt: new Date(),
             errorMessage: null,
           },
         );
@@ -280,7 +278,6 @@ export class CancelEventSagaConsumer {
       { id: step.id },
       {
         status: "skipped",
-        completedAt: new Date(),
         errorMessage: null,
       },
     );

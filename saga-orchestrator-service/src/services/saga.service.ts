@@ -464,7 +464,7 @@ export class SagaService {
         });
         await this.sagaStepRepository.update(
           { id: bookingStatusStep.id },
-          { status: "compensated", completedAt: new Date(), errorMessage: null },
+          { status: "compensated", errorMessage: null },
         );
       }
 
@@ -476,7 +476,7 @@ export class SagaService {
         await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [bookingId] });
         await this.sagaStepRepository.update(
           { id: seatStep.id },
-          { status: "compensated", completedAt: new Date(), errorMessage: null },
+          { status: "compensated", errorMessage: null },
         );
       }
 
@@ -517,14 +517,14 @@ export class SagaService {
     await this.sagaRepository.update({ id: sagaId }, { currentStep: step.stepName });
     await this.sagaStepRepository.update(
       { id: step.id },
-      { status: "in_progress", startedAt: new Date(), errorMessage: null },
+      { status: "in_progress", errorMessage: null },
     );
 
     try {
       await action();
       await this.sagaStepRepository.update(
         { id: step.id },
-        { status: "completed", completedAt: new Date(), errorMessage: null },
+        { status: "completed", errorMessage: null },
       );
     } catch (error: unknown) {
       await this.sagaStepRepository.update(
@@ -555,14 +555,14 @@ export class SagaService {
     await this.sagaRepository.update({ id: sagaId }, { currentStep: step.stepName });
     await this.sagaStepRepository.update(
       { id: step.id },
-      { status: "in_progress", startedAt: new Date(), errorMessage: null },
+      { status: "in_progress", errorMessage: null },
     );
 
     try {
       const result = await action();
       await this.sagaStepRepository.update(
         { id: step.id },
-        { status: "completed", completedAt: new Date(), errorMessage: null },
+        { status: "completed", errorMessage: null },
       );
       return result;
     } catch (error: unknown) {
@@ -592,7 +592,7 @@ export class SagaService {
     await this.sagaRepository.update({ id: sagaId }, { currentStep: step.stepName });
     await this.sagaStepRepository.update(
       { id: step.id },
-      { status: "skipped", completedAt: new Date(), errorMessage: null },
+      { status: "skipped", errorMessage: null },
     );
   }
 

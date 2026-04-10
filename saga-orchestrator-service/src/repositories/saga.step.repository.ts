@@ -42,9 +42,7 @@ export class SagaStepRepository
       data: {
         status: "pending",
         retryCount: 0,
-        errorMessage: null,
-        startedAt: null,
-        completedAt: null,
+        errorMessage: null
       },
     });
   }
