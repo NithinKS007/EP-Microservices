@@ -47,15 +47,4 @@ export class SagaController {
     await this.sagaRecoveryJob.recoverAbandonedSagas();
     sendResponse(res, StatusCodes.OK, null, "Recovery triggered");
   }
-
-  /**
-   * POST /api/v1/sagas/:sagaId/compensate
-   * Admin endpoint to forcefully rollback a stuck saga.
-   */
-  async forceCompensate(req: Request, res: Response) {
-    const dto = await validateDto(FindSagaStatusQueryDto, { id: req.params.sagaId });
-    const sagaId = dto.id;
-    const result = await this.sagaService.forceFailAndCompensate(sagaId);
-    sendResponse(res, StatusCodes.OK, result, "Saga compensated successfully");
-  }
 }

@@ -107,6 +107,7 @@ export class PaymentRepository
       where: {
         bookingId,
       },
+      orderBy: { createdAt: "desc" },
     });
   }
 }

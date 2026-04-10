@@ -22,6 +22,5 @@ router.get("/:sagaId", asyncHandler(sagaController.findSagaDetails.bind(sagaCont
 
 // Advanced Admin Endpoints
 router.post("/recovery", asyncHandler(sagaController.triggerRecovery.bind(sagaController)));
-router.post("/:sagaId/compensate", asyncHandler(sagaController.forceCompensate.bind(sagaController)));
 
 export default router;

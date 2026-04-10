@@ -25,4 +25,5 @@ export interface ISagaStepRepository extends DatabaseAdapter<
 > {
   findBySagaId(sagaId: string): Promise<SagaStepModel[]>;
   resetRetryableSteps(sagaId: string): Promise<void>;
+  resetAllSteps(sagaId: string): Promise<void>;
 }

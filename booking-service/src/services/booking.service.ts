@@ -450,6 +450,7 @@ export class BookingService {
     const paymentsResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
       bookingIds: [bookingId],
     });
-    return paymentsResponse.payments?.[0];
+    const payments = paymentsResponse.payments ?? [];
+    return payments[payments.length - 1];
   }
 }

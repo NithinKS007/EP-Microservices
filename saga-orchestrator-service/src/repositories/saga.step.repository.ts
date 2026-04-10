@@ -46,4 +46,20 @@ export class SagaStepRepository
       },
     });
   }
+
+  /**
+   * Resets all steps (including completed) for a hard restart.
+   * Used in: Fully failed/compensated Saga restart
+   * Triggered via: Saga Orchestrator
+   */
+  async resetAllSteps(sagaId: string): Promise<void> {
+    await this.prisma.sagaStep.updateMany({
+      where: { sagaId },
+      data: {
+        status: "pending",
+        retryCount: 0,
+        errorMessage: null
+      },
+    });
+  }
 }
