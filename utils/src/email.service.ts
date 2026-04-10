@@ -43,7 +43,7 @@ export class EmailService {
       });
       logger.info(`${to} ${subject} ${text}`);
     } catch (error) {
-      console.log(`Error sending the email:${error}`);
+      logger.error(`Error sending the email:${error}`);
       throw new ValidationError("Error sending the email");
     }
   }

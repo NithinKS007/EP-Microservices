@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY booking-service/package*.json ./booking-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../booking-service && npm ci
+RUN cd utils && npm ci 
+RUN cd booking-service && npm ci
 
 # Copy full source
 COPY utils ./utils

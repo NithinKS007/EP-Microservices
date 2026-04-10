@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY api-gateway/package*.json ./api-gateway/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../api-gateway && npm ci
+RUN cd utils && npm ci 
+RUN cd api-gateway && npm ci
 
 # Copy full source
 COPY utils ./utils

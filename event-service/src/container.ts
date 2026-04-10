@@ -11,11 +11,16 @@ import { UnitOfWork } from "./repositories/unity.of.work";
 import { CustomMiddleware } from "../../utils/src/auth.middleware";
 import { SeatController } from "./controllers/seat.controller";
 import { EventService } from "./services/event.service";
+import { EventGrpcController } from "./grpc/event.server";
+import { BookingServiceGrpcClient } from "./grpc/booking.client";
+import { PaymentServiceGrpcClient } from "./grpc/payment.client";
+import { SagaServiceGrpcClient } from "./grpc/saga.client";
 
 const container = createContainer();
 const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
+const topics: { topic: string }[] = [];
 
 const emailUser = envConfig.EMAIL_USER;
 const emailPass = envConfig.EMAIL_PASS;
@@ -48,6 +53,7 @@ container.register({
       brokers,
       clientId,
       groupId,
+      topics,
     })),
   emailService: asClass(EmailService)
     .scoped()
@@ -56,6 +62,10 @@ container.register({
       emailPass,
     })),
   tokenService: asClass(TokenService).scoped(),
+  eventGrpcController: asClass(EventGrpcController).scoped(),
+  bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
+  paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
+  sagaServiceGrpcClient: asClass(SagaServiceGrpcClient).scoped(),
 });
 
 export { container };

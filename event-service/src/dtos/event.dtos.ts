@@ -2,11 +2,11 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsDateString,
   MaxLength,
   IsInt,
   Min,
   Max,
+  IsDate,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -26,11 +26,16 @@ export class CreateEventDto {
   @MaxLength(200)
   venueName!: string;
 
-  @IsDateString()
+  @Type(() => Date)
+  @IsDate()
   eventDate!: Date;
 }
 
-export class UpdateEventDto extends CreateEventDto {}
+export class UpdateEventDto extends CreateEventDto {
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
+}
 
 export class GetEventsQueryDto {
   @IsOptional()

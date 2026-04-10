@@ -1,7 +1,7 @@
 import { envConfig } from "./env.config";
 import { Application } from "express";
 import { createProxyMiddleware, Options } from "http-proxy-middleware";
-import { logger } from "../../../utils/src";
+import { codeGenerator, logger } from "../../../utils/src";
 import { ClientRequest, IncomingMessage, ServerResponse } from "http";
 import { Socket } from "net";
 import { authenticate } from "./../middlewares/auth.middleware";
@@ -135,8 +135,9 @@ class ServiceProxy {
 
   private static handleProxyRequest(
     proxyReq: ClientRequest,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     req: IncomingMessage & { body?: any },
-    res: ServerResponse,
+    _res: ServerResponse,
   ): void {
     if (req.headers["user-agent"]) {
       proxyReq.setHeader("user-agent", req.headers["user-agent"]);
@@ -153,7 +154,7 @@ class ServiceProxy {
     if (req.headers["x-role"]) proxyReq.setHeader("x-role", req.headers["x-role"]);
     if (req.headers["x-email"]) proxyReq.setHeader("x-email", req.headers["x-email"]);
 
-    const requestId = req.headers["x-request-id"] || `${Date.now()}-${Math.random()}`;
+    const requestId = req.headers["x-request-id"] || `${codeGenerator().code}`;
     proxyReq.setHeader("x-request-id", requestId);
 
     if (req.body && typeof req.body === "object") {
@@ -182,7 +183,7 @@ class ServiceProxy {
   private static handleProxyResponse(
     proxyRes: IncomingMessage,
     req: IncomingMessage,
-    res: ServerResponse,
+    _res: ServerResponse,
   ): void {
     logger.info(`Received response ${proxyRes.statusCode} for ${req.method} ${req.url}`);
   }

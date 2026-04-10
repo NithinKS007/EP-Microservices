@@ -6,11 +6,19 @@ import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startBookingGrpcServer } from "./grpc/start.server";
+import { OutboxWorker } from "./utils/outbox.worker";
+import { BookingExpiryJob } from "./utils/booking.expiry.job";
+
+let kafkaService: KafkaService | null = null;
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
+      await kafkaService.disconnect();
+    }
+
     // Close database connection
     await closePrisma();
 
@@ -49,7 +57,9 @@ const startServer = async () => {
     }
     /** Connect producer and consumer */
 
-    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    kafkaService = container.resolve<KafkaService>("kafkaService");
+    const outboxWorker = container.resolve<OutboxWorker>("outboxWorker");
+    const bookingExpiryJob = container.resolve<BookingExpiryJob>("bookingExpiryJob");
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();
@@ -63,6 +73,10 @@ const startServer = async () => {
     });
 
     startBookingGrpcServer();
+    if (envConfig.KAFKA_ENABLED === "true") {
+      outboxWorker.start();
+    }
+    bookingExpiryJob.start();
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${envConfig.PORT} is already in use`);

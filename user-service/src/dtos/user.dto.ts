@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
+import { Type } from "class-transformer";
 
 export class FindUserByIdRequestDto {
   @IsString()
@@ -13,4 +14,34 @@ export class UpdateUserRequestDto {
 
   @IsString()
   name!: string;
+}
+
+export class UpdateSystemRoleRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  id!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role!: "USER" | "ADMIN";
+
+  @IsString()
+  @IsNotEmpty()
+  systemCode!: string;
+}
+
+export class FindPaginatedUsersRequestDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit: number = 10
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  page: number = 1
 }

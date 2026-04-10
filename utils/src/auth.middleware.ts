@@ -27,7 +27,7 @@ export class CustomMiddleware {
   /**
    * Sets auth context from headers
    */
-  public context(req: AuthReq, res: Response, next: NextFunction) {
+  public context(req: AuthReq, _res: Response, next: NextFunction) {
     const id = req.headers["x-id"];
     const role = req.headers["x-role"];
     const email = req.headers["x-email"];
@@ -46,7 +46,7 @@ export class CustomMiddleware {
     next();
   }
 
-  public metaData(req: WithMetaData, res: Response, next: NextFunction) {
+  public metaData(req: WithMetaData, _res: Response, next: NextFunction) {
     const userAgent = req.headers["user-agent"];
     const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     const requestId = req.headers["x-request-id"];
@@ -65,7 +65,7 @@ export class CustomMiddleware {
     next();
   }
 
-  public requestLogger = (req: AuthReq, res: Response, next: NextFunction) => {
+  public requestLogger = (req: AuthReq, _res: Response, next: NextFunction) => {
     const requestId = req.meta?.requestId || "unknown";
     const ip = req.meta?.ip || "unknown";
     const userAgent = req.meta?.userAgent || "unknown";
@@ -86,7 +86,7 @@ export class CustomMiddleware {
    * Authorizes user based on role
    */
   public authorize(roles: Array<"ADMIN" | "USER">) {
-    return (req: AuthReq, res: Response, next: NextFunction) => {
+    return (req: AuthReq, _res: Response, next: NextFunction) => {
       if (!req.user || !roles.includes(req.user.role)) {
         throw new ForbiddenError("You are not allowed to access this resource");
       }

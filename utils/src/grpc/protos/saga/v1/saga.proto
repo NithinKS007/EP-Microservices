@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package saga.v1;
+
+service SagaService {
+  rpc StartCancelEventSaga(StartCancelEventSagaRequest) returns (StartCancelEventSagaResponse);
+  rpc StartInitiatePaymentSaga(StartInitiatePaymentSagaRequest) returns (StartInitiatePaymentSagaResponse);
+}
+
+message StartCancelEventSagaRequest {
+  string event_id = 1;
+}
+
+message StartCancelEventSagaResponse {
+  bool success = 1;
+  string message = 2;
+  string saga_id = 3;
+  string status = 4;
+}
+
+message StartInitiatePaymentSagaRequest {
+  string booking_id = 1;
+  string actor_id = 2;
+  string actor_role = 3;
+}
+
+message StartInitiatePaymentSagaResponse {
+  bool success = 1;
+  string message = 2;
+  string saga_id = 3;
+  string status = 4;
+  string payment_id = 5;
+  string razorpay_order_id = 6;
+  double amount = 7;
+  string currency = 8;
+}

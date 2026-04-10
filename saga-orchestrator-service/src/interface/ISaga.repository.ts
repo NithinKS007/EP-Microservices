@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed Saga domain model
  */
-export type SagaModel = Prisma.SagaGetPayload<{}>;
+export type SagaModel = Prisma.SagaGetPayload<Prisma.SagaDefaultArgs>;
 
 /**
  * Types for repository operations
@@ -22,4 +22,7 @@ export interface ISagaRepository extends DatabaseAdapter<
   SagaCreateData,
   SagaUpdateData,
   SagaWhere
-> {}
+> {
+  findByTypeAndReferenceId(sagaType: string, referenceId: string): Promise<SagaModel | null>;
+  findAbandonedSagas(timeoutMinutes: number): Promise<SagaModel[]>;
+}

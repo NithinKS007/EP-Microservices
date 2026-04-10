@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY auth-service/package*.json ./auth-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../auth-service && npm ci
+RUN cd utils && npm ci 
+RUN cd auth-service && npm ci
 
 # Copy full source
 COPY utils ./utils

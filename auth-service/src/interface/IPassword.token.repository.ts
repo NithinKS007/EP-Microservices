@@ -4,7 +4,8 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed PasswordResetToken domain model
  */
-export type PasswordResetTokenModel = Prisma.PasswordResetTokenGetPayload<{}>;
+export type PasswordResetTokenModel =
+  Prisma.PasswordResetTokenGetPayload<Prisma.PasswordResetTokenDefaultArgs>;
 
 /**
  * Types for repository operations

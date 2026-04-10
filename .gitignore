@@ -1,3 +1,4 @@
 .env.postgres
 .redis.env
 .env
+docs.md

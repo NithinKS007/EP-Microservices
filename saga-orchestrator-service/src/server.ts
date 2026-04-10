@@ -5,12 +5,22 @@ import { logger } from "../../utils/src/logger";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
+import { startSagaGrpcServer } from "./grpc/start.server";
+import { OutboxWorker } from "./utils/outbox.worker";
+import { CancelEventSagaConsumer } from "./utils/cancel.event.saga.consumer";
+import { SagaRecoveryJob } from "./utils/saga.recovery.job";
 
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+
+    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    if (envConfig.KAFKA_ENABLED === "true") {
+      await kafkaService.disconnect();
+    }
+
     // Close database connection
     await closePrisma();
 
@@ -52,10 +62,22 @@ const startServer = async () => {
     /** Connect producer and consumer */
 
     const kafkaService = container.resolve<KafkaService>("kafkaService");
+    const outboxWorker = container.resolve<OutboxWorker>("outboxWorker");
 
     if (envConfig.KAFKA_ENABLED === "true") {
+      await kafkaService.ensureTopics();
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
+
+      const cancelEventSagaConsumer =
+        container.resolve<CancelEventSagaConsumer>("cancelEventSagaConsumer");
+
+      await kafkaService.consumeEvents([
+        {
+          topic: "saga.cancel.event.requested",
+          handler: cancelEventSagaConsumer.handle.bind(cancelEventSagaConsumer),
+        },
+      ]);
     }
 
     const server = app.listen(envConfig.PORT, () => {
@@ -64,6 +86,12 @@ const startServer = async () => {
       );
     });
 
+    startSagaGrpcServer();
+    if (envConfig.KAFKA_ENABLED === "true") {
+      outboxWorker.start();
+      const sagaRecoveryJob = container.resolve<SagaRecoveryJob>("sagaRecoveryJob");
+      sagaRecoveryJob.start();
+    }
 
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {

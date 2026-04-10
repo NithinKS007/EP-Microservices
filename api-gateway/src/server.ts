@@ -12,13 +12,13 @@ import { envConfig } from "./config/env.config";
  */
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
-  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  logger.info(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
-    console.log("✅ Graceful shutdown completed");
+    logger.info("✅ Graceful shutdown completed");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error during graceful shutdown:", error);
+    logger.error("❌ Error during graceful shutdown:", error);
     process.exit(1);
   }
 };
@@ -46,9 +46,9 @@ const startServer = () => {
     });
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
-        console.error(`❌ Port ${envConfig.PORT} is already in use`);
+        logger.error(`❌ Port ${envConfig.PORT} is already in use`);
       } else {
-        console.error("❌ Server error:", error);
+        logger.error("❌ Server error:", error);
       }
       process.exit(1);
     });

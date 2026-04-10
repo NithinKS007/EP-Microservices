@@ -5,7 +5,7 @@ import { GetSeatsQueryDto } from "./../dtos/seat.dtos";
 /**
  * Prisma-backed Seat domain model
  */
-export type SeatModel = Prisma.SeatGetPayload<{}>;
+export type SeatModel = Prisma.SeatGetPayload<Prisma.SeatDefaultArgs>;
 
 /**
  * Repository operation types
@@ -64,7 +64,7 @@ export interface ISeatRepository extends DatabaseAdapter<
     eventId: string,
     expiryDate: Date,
     seatNumbers: string[],
-  ): Promise<void>;
+  ): Promise<number>;
 
   /**
    * Confirm seats
@@ -83,12 +83,24 @@ export interface ISeatRepository extends DatabaseAdapter<
   releaseSeats(bookingId: string): Promise<void>;
 
   /**
+   * Reset seats reserved or sold under a booking back to available.
+   * Used when an admin cancels an event and related bookings must be unwound.
+   */
+  resetSeatsForBooking(bookingId: string): Promise<void>;
+  bulkReleaseSeatsForBookings(bookingIds: string[]): Promise<number>;
+
+  /**
    * Count sold seats
    *
    * @param eventId - Event ID
    * @returns number
    * */
   countSoldSeats(eventId: string): Promise<number>;
+
+  /**
+   * Count locked seats for an event
+   */
+  countLockedSeats(eventId: string): Promise<number>;
 
   findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]>;
 }

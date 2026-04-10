@@ -1,16 +1,16 @@
 model SagaStep {
-    id        String @id @default(uuid())
-    sagaId    String
-    stepName  String
-    stepOrder Int
+    id        String @id @default(uuid()) @db.Uuid
+    sagaId    String @map("fk_saga_id") @db.Uuid
+    stepName  String @map("step_name")
+    stepOrder Int    @map("step_order")
 
     status     StepStatus
-    retryCount Int        @default(0)
+    retryCount Int        @default(0) @map("retry_count")
 
-    errorMessage String?
+    errorMessage String? @map("error_message")
 
-    startedAt   DateTime?
-    completedAt DateTime?
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
 
     saga Saga @relation(fields: [sagaId], references: [id])
 

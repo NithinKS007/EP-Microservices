@@ -7,13 +7,17 @@ import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startPaymentGrpcServer } from "./grpc/start.server";
 import { OutboxWorker } from "./utils/outbox.worker";
-import { PaymentSuccessConsumer } from "./utils/payment.success.consumer";
-import { PaymentFailedConsumer } from "./utils/payment.failed.consumer";
+import { PaymentEventConsumer } from "./utils/payment.event.consumer";
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    if (envConfig.KAFKA_ENABLED === "true") {
+      await kafkaService.disconnect();
+    }
+
     // Close database connection
     await closePrisma();
 
@@ -56,20 +60,24 @@ const startServer = async () => {
     const outboxWorker = container.resolve<OutboxWorker>("outboxWorker");
 
     if (envConfig.KAFKA_ENABLED === "true") {
+      await kafkaService.ensureTopics();
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
 
-      const successConsumer = container.resolve<PaymentSuccessConsumer>("paymentSuccessConsumer");
-      const failedConsumer = container.resolve<PaymentFailedConsumer>("paymentFailedConsumer");
+      const paymentEventConsumer = container.resolve<PaymentEventConsumer>("paymentEventConsumer");
 
       await kafkaService.consumeEvents([
         {
           topic: "payment.success",
-          handler: successConsumer.handle.bind(successConsumer),
+          handler: paymentEventConsumer.handleSuccess.bind(paymentEventConsumer),
         },
         {
           topic: "payment.failed",
-          handler: failedConsumer.handle.bind(failedConsumer),
+          handler: paymentEventConsumer.handleFailed.bind(paymentEventConsumer),
+        },
+        {
+          topic: "payment.refunded",
+          handler: paymentEventConsumer.handleRefunded.bind(paymentEventConsumer),
         },
       ]);
     }
@@ -81,7 +89,9 @@ const startServer = async () => {
     });
 
     startPaymentGrpcServer();
-    outboxWorker.start(); // DO NOT AWAIT THIS CALL AS IT'S AN INFINITE LOOP
+    if (envConfig.KAFKA_ENABLED === "true") {
+      outboxWorker.start(); // DO NOT AWAIT THIS CALL AS IT'S AN INFINITE LOOP
+    }
     server.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${envConfig.PORT} is already in use`);

@@ -30,7 +30,7 @@ export class EventController {
 
   async updateEvent(req: AuthReq, res: Response): Promise<void> {
     const { id } = req.params;
-    const data = await validateDto(UpdateEventDto, req.body);
+    const data = await validateDto(UpdateEventDto, { ...req.body, id });
     await this.eventService.updateEvent(id, data);
     sendResponse(res, StatusCodes.OK, null, "Event updated successfully");
   }
@@ -39,5 +39,11 @@ export class EventController {
     const { id } = req.params;
     await this.eventService.deleteEvent(id);
     sendResponse(res, StatusCodes.OK, null, "Event deleted successfully");
+  }
+
+  async cancelEvent(req: AuthReq, res: Response): Promise<void> {
+    const { id } = req.params;
+    const saga = await this.eventService.cancelEvent(id);
+    sendResponse(res, StatusCodes.Accepted, saga, "Event cancellation saga started successfully");
   }
 }

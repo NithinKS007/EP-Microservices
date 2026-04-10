@@ -6,11 +6,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "src",
-    "outDir": "dist",
+    "baseUrl": "src",
+    "rootDir": "../",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "baseUrl": "./"
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts"]
 }

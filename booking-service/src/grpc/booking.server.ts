@@ -3,6 +3,10 @@ import {
   toGrpcError,
   FindBookingRequest,
   FindBookingResponse,
+  FindBookingsByEventRequest,
+  FindBookingsByEventResponse,
+  BulkCancelBookingsRequest,
+  BulkCancelBookingsResponse,
   UpdateBookingStatusRequest,
   UpdateBookingStatusResponse,
   UpdateBookingAmountRequest,
@@ -29,7 +33,49 @@ export class BookingGrpcController {
         callback(null, {
           success: true,
           message: "Booking found successfully",
-          booking: { ...booking, status: this.mapBookingStatusToGrpc(booking.status) },
+          booking: {
+            ...booking,
+            seatIds: booking.seatIds || [],
+            status: this.mapBookingStatusToGrpc(booking.status),
+          },
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  findBookingsByEvent(
+    call: ServerUnaryCall<FindBookingsByEventRequest, FindBookingsByEventResponse>,
+    callback: SendUnaryData<FindBookingsByEventResponse>,
+  ): void {
+    const { eventId } = call.request;
+    this.bookingService
+      .findBookingsByEvent(eventId)
+      .then((bookings) =>
+        callback(null, {
+          success: true,
+          message: "Bookings found successfully",
+          bookings: bookings.map((booking) => ({
+            ...booking,
+            seatIds: (booking as { seatIds?: string[] }).seatIds || [],
+            status: this.mapBookingStatusToGrpc(booking.status),
+          })),
+        }),
+      )
+      .catch((err) => callback(toGrpcError(err), null));
+  }
+
+  bulkCancelBookings(
+    call: ServerUnaryCall<BulkCancelBookingsRequest, BulkCancelBookingsResponse>,
+    callback: SendUnaryData<BulkCancelBookingsResponse>,
+  ): void {
+    const { bookingIds } = call.request;
+    this.bookingService
+      .bulkCancelBookings(bookingIds)
+      .then((result) =>
+        callback(null, {
+          success: true,
+          message: "Bookings cancelled successfully",
+          affectedCount: result.affectedCount,
         }),
       )
       .catch((err) => callback(toGrpcError(err), null));
@@ -42,7 +88,7 @@ export class BookingGrpcController {
     const { bookingId, status } = call.request;
     this.bookingService
       .updateBookingStatus(bookingId, this.mapGrpcStatusToEntity(status))
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Booking status updated successfully",
@@ -58,7 +104,7 @@ export class BookingGrpcController {
     const { bookingId, totalAmount } = call.request;
     this.bookingService
       .updateBookingAmount(bookingId, totalAmount)
-      .then((user) =>
+      .then(() =>
         callback(null, {
           success: true,
           message: "Booking amount updated successfully",

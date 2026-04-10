@@ -6,6 +6,8 @@ const controller = container.resolve<BookingGrpcController>("bookingGrpcControll
 
 export const handlers: GrpcHandler = {
   findBooking: controller.findBooking.bind(controller),
+  findBookingsByEvent: controller.findBookingsByEvent.bind(controller),
+  bulkCancelBookings: controller.bulkCancelBookings.bind(controller),
   updateBookingStatus: controller.updateBookingStatus.bind(controller),
   updateBookingAmount: controller.updateBookingAmount.bind(controller),
 };

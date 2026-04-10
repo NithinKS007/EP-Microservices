@@ -1,13 +1,13 @@
 model PaymentEvent {
     id        String @id @default(uuid()) @db.Uuid
-    paymentId String @map("fk_payment_id") @db.Uuid
+    paymentId String? @map("fk_payment_id") @db.Uuid
     type      String
     payload   Json
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
 
-    payment   Payment  @relation(fields: [paymentId], references: [id])
+    payment   Payment?  @relation(fields: [paymentId], references: [id])
 
     @@index([paymentId])
     @@map("payment_events")

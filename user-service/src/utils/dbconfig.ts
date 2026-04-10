@@ -61,7 +61,7 @@ export const getDatabaseInfo = (): string => {
     const username = url.username;
 
     return `postgresql://${username}:***@${host}:${port}/${database}`;
-  } catch (error) {
+  } catch {
     return "Invalid DATABASE_URL format";
   }
 };

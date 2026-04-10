@@ -10,7 +10,7 @@ export class OutboxWorker {
   private readonly BASE_DELAY_MS = 1000; // 1s
   private readonly MAX_DELAY_MS = 60000; // 60s
   private readonly BATCH_SIZE = 50;
-  private readonly POLL_INTERVAL = 500;
+  private readonly POLL_INTERVAL = 5000;
   private isRunning = false;
 
   constructor({
@@ -87,8 +87,9 @@ export class OutboxWorker {
     });
   }
 
-  private async handleFailure(event: OutboxEvent, err: any) {
+  private async handleFailure(event: OutboxEvent, err: unknown) {
     const retryCount = event.retryCount + 1;
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
 
     if (retryCount >= this.MAX_RETRIES) {
       logger.error(`Outbox event failed after ${retryCount} retries`);
@@ -98,7 +99,7 @@ export class OutboxWorker {
         {
           status: "FAILED",
           processedAt: new Date(),
-          error: err.message || "Unknown error",
+          error: errorMessage,
         },
       );
 

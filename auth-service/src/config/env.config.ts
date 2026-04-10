@@ -19,11 +19,22 @@ interface Env {
   PRT_TTL: number;
 
   CLIENT_URL: string;
-  
+
   DATABASE_URL: string;
 
   EMAIL_USER: string;
   EMAIL_PASS: string;
+
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD: string;
+  REDIS_DB: number;
+
+  AUTH_EMAIL_EXISTS_CACHE_PREFIX: string;
+  AUTH_EMAIL_BLOOM_KEY: string;
+  AUTH_EMAIL_BLOOM_ERROR_RATE: number;
+  AUTH_EMAIL_BLOOM_CAPACITY: number;
+  AUTH_EMAIL_BLOOM_EXPANSION: number;
 }
 
 export const envConfig: Env = {
@@ -46,8 +57,20 @@ export const envConfig: Env = {
 
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:4000",
 
-  DATABASE_URL: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
+  DATABASE_URL:
+    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
 
   EMAIL_USER: process.env.EMAIL_USER || "email",
   EMAIL_PASS: process.env.EMAIL_PASS || "password",
+
+  REDIS_HOST: process.env.REDIS_HOST || "redis",
+  REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
+  REDIS_DB: Number(process.env.REDIS_DB) || 0,
+  
+  AUTH_EMAIL_EXISTS_CACHE_PREFIX: process.env.AUTH_EMAIL_EXISTS_CACHE_PREFIX || "auth:email:exists",
+  AUTH_EMAIL_BLOOM_KEY: process.env.AUTH_EMAIL_BLOOM_KEY || "auth:email:bloom",
+  AUTH_EMAIL_BLOOM_ERROR_RATE: Number(process.env.AUTH_EMAIL_BLOOM_ERROR_RATE) || 0.001,
+  AUTH_EMAIL_BLOOM_CAPACITY: Number(process.env.AUTH_EMAIL_BLOOM_CAPACITY) || 1_000_000,
+  AUTH_EMAIL_BLOOM_EXPANSION: Number(process.env.AUTH_EMAIL_BLOOM_EXPANSION) || 2,
 };

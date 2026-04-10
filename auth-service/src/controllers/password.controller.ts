@@ -29,8 +29,8 @@ export class PasswordController {
   }
 
   async changePass(req: AuthReq, res: Response): Promise<void> {
-    const data = await validateDto(ChangePasswordRequestDto, req.body);
-    await this.passwordService.changePass({ ...data, userId: req?.user?.id! });
+    const data = await validateDto(ChangePasswordRequestDto, { ...req.body, userId: req.user?.id });
+    await this.passwordService.changePass({ ...data, userId: data.userId });
     sendResponse(res, StatusCodes.OK, null, "Password changed successfully");
   }
 }

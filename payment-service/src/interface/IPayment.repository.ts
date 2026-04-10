@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed Payment domain model
  */
-export type PaymentModel = Prisma.PaymentGetPayload<{}>;
+export type PaymentModel = Prisma.PaymentGetPayload<Prisma.PaymentDefaultArgs>;
 
 /**
  * Types for repository operations
@@ -26,4 +26,7 @@ export interface IPaymentRepository extends DatabaseAdapter<
   updateManyPaymentsNotSuccess(paymentId: string): Promise<Prisma.BatchPayload>;
   updateManyPaymentsNotFailed(paymentId: string): Promise<Prisma.BatchPayload>;
   findByOrderId(orderId: string): Promise<PaymentModel | null>;
+  findPaymentsByBookingIds(bookingIds: string[]): Promise<PaymentModel[]>;
+  bulkRefundPayments(bookingIds: string[]): Promise<{ refundedCount: number; failedCount: number }>;
+  findByBookingId(bookingId: string): Promise<PaymentModel | null>;
 }

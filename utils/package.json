@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "_comment_grpc:generate": "This will read .proto files from src/grpc/protos => This will read .proto files from src/grpc/protos =>Use src/grpc/buf.gen.yaml as template",
-    "grpc:generate": "buf generate src/grpc --template src/grpc/buf.gen.yaml"
+    "grpc:generate": "buf generate src/grpc --template src/grpc/buf.gen.yaml",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "keywords": [],
   "author": "",
@@ -27,6 +30,7 @@
     "mongoose": "^8.20.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
+    "opossum": "^9.0.0",
     "prisma": "^6.17.1",
     "redis": "^5.8.3"
   },
@@ -38,9 +42,16 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.0",
     "@types/nodemailer": "^7.0.11",
+    "@types/opossum": "^8.1.9",
     "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "ts-proto": "^2.11.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.3.3"
   }
 }

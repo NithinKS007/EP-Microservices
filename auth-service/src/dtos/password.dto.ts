@@ -35,4 +35,8 @@ export class ChangePasswordRequestDto {
       "New Password is too weak. Must include uppercase, lowercase, number, and special character.",
   })
   newPassword!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
 }

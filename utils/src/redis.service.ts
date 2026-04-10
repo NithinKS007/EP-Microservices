@@ -1,6 +1,11 @@
 import { createClient, RedisClientType } from "redis";
 import { logger } from "./logger";
 
+type BloomReserveOptions = {
+  expansion?: number;
+  nonScaling?: boolean;
+};
+
 export class RedisService {
   private client: RedisClientType;
   private db: number;
@@ -8,44 +13,35 @@ export class RedisService {
   constructor(config: { host: string; port: number; password?: string; db: number }) {
     this.db = config.db;
 
-    const baseConfig = {
+    this.client = createClient({
       url: `redis://${config.host}:${config.port}`,
       password: config.password,
+      database: config.db,
       socket: {
         reconnectStrategy: (retries: number) => Math.min(retries * 50, 1000),
       },
-    };
-
-    this.client = createClient({
-      ...baseConfig,
-      database: config.db,
     });
 
     this.setupListeners();
   }
 
   private setupListeners() {
-    // Fires when there is an error
     this.client.on("error", (err) => {
       logger.error(`❌ Redis DB ${this.db} error: ${err}`);
     });
 
-    // Fires when client starts connecting
     this.client.on("connect", () => {
       logger.info(`🔌 Redis DB ${this.db} connecting...`);
     });
 
-    // Fires when client is ready to use
     this.client.on("ready", () => {
       logger.info(`🟢 Redis DB ${this.db} ready`);
     });
 
-    // Fires when connection ends
     this.client.on("end", () => {
       logger.warn(`🔴 Redis DB ${this.db} disconnected`);
     });
 
-    // Fires on reconnection attempt
     this.client.on("reconnecting", () => {
       logger.info(`🔄 Redis DB ${this.db} reconnecting...`);
     });
@@ -76,91 +72,126 @@ export class RedisService {
     }
   }
 
+  isConnected(): boolean {
+    return this.client.isOpen;
+  }
+
   async set(key: string, value: string, ttl?: number) {
     this.ensureConnected();
+
     try {
       if (ttl) {
         await this.client.setEx(key, ttl, value);
-        logger.info(`💾 Redis DB ${this.db}: SET key="${key}" with TTL=${ttl}`);
       } else {
         await this.client.set(key, value);
-        logger.info(`💾 Redis DB ${this.db}: SET key="${key}"`);
       }
     } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to SET key="${key}" ${err}`);
+      logger.error(`SET failed key="${key}" ${err}`);
     }
   }
 
   async get(key: string) {
     this.ensureConnected();
-    try {
-      const value = await this.client.get(key);
-      logger.info(`📥 Redis DB ${this.db}: GET key="${key}"`);
-      return value;
-    } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to GET key="${key}" ${err}`);
-      return null;
-    }
-  }
 
-  async setJSON<T>(key: string, value: T, ttl?: number) {
-    await this.set(key, JSON.stringify(value), ttl);
-  }
-
-  async getJSON<T>(key: string): Promise<T | null> {
-    const data = await this.get(key);
-    if (!data) return null;
     try {
-      return JSON.parse(data);
+      return await this.client.get(key);
     } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to parse JSON key="${key}" ${err}`);
+      logger.error(`GET failed key="${key}" ${err}`);
       return null;
     }
   }
 
   async del(key: string) {
     this.ensureConnected();
+
     try {
-      const result = await this.client.del(key);
-      logger.info(`🗑 Redis DB ${this.db}: DEL key="${key}", deleted=${result}`);
-      return result;
+      return await this.client.del(key);
     } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to DEL key="${key}" ${err}`);
+      logger.error(`DEL failed key="${key}" ${err}`);
       return 0;
-    }
-  }
-
-  async setIfNotExists(key: string, value: string, ttl: number) {
-    this.ensureConnected();
-    try {
-      const result = await this.client.set(key, value, { NX: true, EX: ttl });
-      logger.info(`Redis DB ${this.db}: SETNX key="${key}", ttl=${ttl}, result=${result}`);
-      return result;
-    } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to SETNX key="${key}" ${err}`);
-      return null;
-    }
-  }
-
-  async ttl(key: string) {
-    this.ensureConnected();
-    try {
-      const ttl = await this.client.ttl(key);
-      logger.info(`⏱ Redis DB ${this.db}: TTL key="${key}" = ${ttl}`);
-      return ttl;
-    } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to get TTL key="${key}" ${err}`);
-      return -2;
     }
   }
 
   async flushCache() {
     this.ensureConnected();
+
     try {
       await this.client.flushDb();
       logger.info(`🧹 Redis DB ${this.db}: Database flushed`);
     } catch (err) {
-      logger.error(`❌ Redis DB ${this.db}: Failed to flush database ${err}`);
+      logger.error(`Flush failed ${err}`);
     }
+  }
+
+  async setBit(key: string, offset: number, value: 0 | 1) {
+    this.ensureConnected();
+
+    try {
+      await this.client.setBit(key, offset, value);
+    } catch (err) {
+      logger.error(`SETBIT failed ${err}`);
+      throw err;
+    }
+  }
+
+  async getBit(key: string, offset: number): Promise<number> {
+    this.ensureConnected();
+
+    try {
+      return await this.client.getBit(key, offset);
+    } catch (err) {
+      logger.error(`GETBIT failed ${err}`);
+      throw err;
+    }
+  }
+
+  private parseBloomResult(result: unknown): boolean {
+    return result === 1 || result === "1" || result === true;
+  }
+
+  async bfReserve(
+    key: string,
+    errorRate: number,
+    capacity: number,
+    options: BloomReserveOptions = {},
+  ): Promise<boolean> {
+    this.ensureConnected();
+
+    const command = ["BF.RESERVE", key, errorRate.toString(), capacity.toString()];
+
+    if (options.expansion !== undefined) {
+      command.push("EXPANSION", options.expansion.toString());
+    }
+
+    if (options.nonScaling) {
+      command.push("NONSCALING");
+    }
+
+    try {
+      await this.client.sendCommand(command);
+      return true;
+    } catch (err) {
+      if (err instanceof Error && /item exists/i.test(err.message)) {
+        return false;
+      }
+
+      throw err;
+    }
+  }
+
+  async bfAdd(key: string, item: string): Promise<boolean> {
+    this.ensureConnected();
+
+    const result = await this.client.sendCommand(["BF.ADD", key, item]);
+
+    return this.parseBloomResult(result);
+  }
+
+  async bfExists(key: string, item: string): Promise<boolean> {
+    this.ensureConnected();
+
+    const result = await this.client.sendCommand(["BF.EXISTS", key, item]);
+
+    return this.parseBloomResult(result);
   }
 }

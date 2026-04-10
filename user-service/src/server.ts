@@ -7,10 +7,16 @@ import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startUserGrpcServer } from "./grpc/start.server";
 
+let kafkaService: KafkaService | null = null;
+
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
+      await kafkaService.disconnect();
+    }
+
     // Close database connection
     await closePrisma();
 
@@ -51,7 +57,7 @@ const startServer = async () => {
     }
     /** Connect producer and consumer */
 
-    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    kafkaService = container.resolve<KafkaService>("kafkaService");
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();

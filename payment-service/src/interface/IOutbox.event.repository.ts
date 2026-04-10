@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed OutboxEvent domain model
  */
-export type OutboxEventModel = Prisma.OutboxEventGetPayload<{}>;
+export type OutboxEventModel = Prisma.OutboxEventGetPayload<Prisma.OutboxEventDefaultArgs>;
 
 /**
  * Types for repository operations

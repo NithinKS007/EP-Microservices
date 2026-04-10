@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed Event domain model
  */
-export type EventModel = Prisma.EventGetPayload<{}>;
+export type EventModel = Prisma.EventGetPayload<Prisma.EventDefaultArgs>;
 
 /**
  * Repository operation types
@@ -42,4 +42,12 @@ export interface IEventRepository extends DatabaseAdapter<
     limit: number;
     page: number;
   }): Promise<{ data: EventModel[]; meta: { total: number; page: number; limit: number } }>;
+
+  findEventsByIdsWithSeats(eventIds: string[]): Promise<
+    Prisma.EventGetPayload<{
+      include: {
+        seats: true;
+      };
+    }>[]
+  >;
 }

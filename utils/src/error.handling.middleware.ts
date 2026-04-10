@@ -10,8 +10,8 @@ import { StatusCodes } from "./http.status.codes";
 export class AppError extends Error {
   statusCode: number;
   code: string;
-  details: any;
-  constructor(message: string, statusCode: number, code?: string, details?: any) {
+  details: unknown;
+  constructor(message: string, statusCode: number, code?: string, details?: unknown) {
     super(message);
     this.statusCode = statusCode;
     this.code = code || "INTERNAL_ERROR";
@@ -72,7 +72,12 @@ export class InternalServerError extends AppError {
  * Falls back to 500 Internal Server Error if not specified.
  */
 
-export const errorMiddleware = (err: AppError, req: Request, res: Response, next: NextFunction) => {
+export const errorMiddleware = (
+  err: AppError,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) => {
   const statusCode = err.statusCode || StatusCodes.InternalServerError;
   const message = err.message || "INTERNAL SERVER ERROR";
   sendResponse(res, statusCode, null, message);

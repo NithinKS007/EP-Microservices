@@ -1,4 +1,14 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsArray, ValidateNested, IsDateString } from "class-validator";
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  ValidateNested,
+  IsDateString,
+  IsInt,
+  Min,
+} from "class-validator";
 import { Type } from "class-transformer";
 
 export enum SeatStatus {
@@ -46,12 +56,17 @@ export class GetSeatsQueryDto {
   @IsString()
   eventId!: string;
 
+
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   page!: number;
 
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   limit!: number;
 }
 

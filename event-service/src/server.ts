@@ -11,6 +11,11 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    const kafkaService = container.resolve<KafkaService>("kafkaService");
+    if (envConfig.KAFKA_ENABLED === "true") {
+      await kafkaService.disconnect();
+    }
+
     // Close database connection
     await closePrisma();
 

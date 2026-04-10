@@ -6,7 +6,8 @@ import {
   ValidateNested,
   IsInt,
   Min,
-  IsOptional
+  IsOptional,
+  IsNotEmpty,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { SagaStatus } from "./../entity/saga.entity";
@@ -34,7 +35,6 @@ export class CreateSagaDto {
   steps!: CreateSagaStepDto[];
 }
 
-
 export class UpdateSagaStatusDto {
   @IsEnum(SagaStatus)
   status!: SagaStatus;
@@ -43,7 +43,6 @@ export class UpdateSagaStatusDto {
   @IsString()
   errorMessage?: string;
 }
-
 
 export class UpdateSagaStepDto {
   @IsEnum(StepStatus)
@@ -65,7 +64,6 @@ export class CompensateSagaDto {
   reason!: string;
 }
 
-
 export class FindSagaQueryDto {
   @IsOptional()
   @IsUUID()
@@ -78,4 +76,12 @@ export class FindSagaQueryDto {
   @IsOptional()
   @IsEnum(SagaStatus)
   status?: SagaStatus;
+}
+
+export class FindSagaStatusQueryDto {
+
+  @IsNotEmpty()
+  @IsUUID()
+  @Type(() => String)
+  id!: string;
 }

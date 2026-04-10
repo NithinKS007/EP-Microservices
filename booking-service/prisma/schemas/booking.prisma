@@ -1,5 +1,5 @@
 model Booking {
-  id      String @id @default(uuid()) 
+  id      String @id @default(uuid()) @db.Uuid
   userId  String @map("fk_users_id") @db.Uuid
   eventId String @map("fk_event_id") @db.Uuid
 

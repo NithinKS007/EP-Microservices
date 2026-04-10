@@ -9,7 +9,8 @@ COPY utils/package*.json ./utils/
 COPY event-service/package*.json ./event-service/
 
 # Install dependencies
-RUN cd utils && npm ci && cd ../event-service && npm ci
+RUN cd utils && npm ci
+RUN cd event-service && npm ci
 
 # Copy full source
 COPY utils ./utils

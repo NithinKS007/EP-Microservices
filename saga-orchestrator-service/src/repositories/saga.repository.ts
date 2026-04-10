@@ -12,7 +12,28 @@ export class SagaRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
   implements ISagaRepository
 {
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
+
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.saga));
+    this.prisma = prisma;
+  }
+
+  async findByTypeAndReferenceId(sagaType: string, referenceId: string): Promise<SagaModel | null> {
+    return await this.prisma.saga.findFirst({
+      where: { sagaType, referenceId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findAbandonedSagas(timeoutMinutes: number): Promise<SagaModel[]> {
+    const cutoffDate = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+    return await this.prisma.saga.findMany({
+      where: {
+        status: { in: ["started", "in_progress"] },
+        updatedAt: { lt: cutoffDate },
+      },
+      orderBy: { createdAt: "asc" },
+    });
   }
 }

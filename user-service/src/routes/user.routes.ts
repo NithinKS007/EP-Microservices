@@ -10,7 +10,22 @@ const customMiddleware = container.resolve<CustomMiddleware>("customMiddleware")
 
 router.use(customMiddleware.context.bind(customMiddleware));
 router.use(customMiddleware.requestLogger.bind(customMiddleware));
+
 router.get("/:id", asyncHandler(userController.findUserById.bind(userController)));
-router.put("/", asyncHandler(userController.updateUser.bind(userController)));
+router.put(
+  "/",
+  customMiddleware.authorize(["USER"]),
+  asyncHandler(userController.updateUser.bind(userController)),
+);
+router.patch(
+  "/",
+  customMiddleware.authorize(["USER"]),
+  asyncHandler(userController.updateRole.bind(userController)),
+);
+router.get(
+  "/",
+  customMiddleware.authorize(["ADMIN"]),
+  asyncHandler(userController.findUsers.bind(userController)),
+);
 
 export { router };

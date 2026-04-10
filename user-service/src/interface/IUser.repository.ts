@@ -4,7 +4,7 @@ import { DatabaseAdapter } from "../../../utils/src/IBase.repository";
 /**
  * Prisma-backed User domain model
  */
-export type UserModel = Prisma.UserGetPayload<{}>;
+export type UserModel = Prisma.UserGetPayload<Prisma.UserDefaultArgs>;
 
 /**
  * Types for repository operations
@@ -24,4 +24,8 @@ export interface IUserRepository extends DatabaseAdapter<
   UserWhere
 > {
   findByEmail(email: string): Promise<UserModel | null>;
+  findUsersWithPagination(dto: {
+    limit: number;
+    page: number;
+  }): Promise<{ data: Omit<UserModel, "password">[]; meta: { total: number; page: number; limit: number } }>;
 }
