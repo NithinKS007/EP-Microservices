@@ -6,6 +6,8 @@ import {
   IsArray,
   ValidateNested,
   IsDateString,
+  IsInt,
+  Min,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -54,12 +56,17 @@ export class GetSeatsQueryDto {
   @IsString()
   eventId!: string;
 
+
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   page!: number;
 
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   limit!: number;
 }
 
