@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Max, Min } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
 import { Type } from "class-transformer";
 
 export class FindUserByIdRequestDto {
@@ -31,15 +31,13 @@ export class UpdateSystemRoleRequestDto {
 }
 
 export class FindPaginatedUsersRequestDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Number)
   @Min(1)
   @Max(100)
   limit!: number;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Number)
   @Min(1)
   @Max(100)
