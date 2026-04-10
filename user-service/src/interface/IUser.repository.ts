@@ -27,5 +27,5 @@ export interface IUserRepository extends DatabaseAdapter<
   findUsersWithPagination(dto: {
     limit: number;
     page: number;
-  }): Promise<{ data: UserModel[]; meta: { total: number; page: number; limit: number } }>;
+  }): Promise<{ data: Omit<UserModel, "password">[]; meta: { total: number; page: number; limit: number } }>;
 }

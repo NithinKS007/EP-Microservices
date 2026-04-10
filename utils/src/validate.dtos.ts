@@ -13,7 +13,9 @@ export async function validateDto<T extends object>(
   if (!cls) throw new Error("Validator received an undefined Class/DTO");
   if (!plain) throw new Error("Validator received undefined data to validate");
   // Convert plain object to instance of the specific class T
-  const instance = plainToInstance(cls, plain);
+  const instance = plainToInstance(cls, plain, {
+    enableImplicitConversion: true,
+  });
 
   // Validate the instance
   const errors: ClassValidatorError[] = await validate(instance);
