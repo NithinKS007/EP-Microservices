@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { SagaService } from "../services/saga.service";
 import { SagaRecoveryJob } from "../utils/saga.recovery.job";
 import { sendResponse, StatusCodes, validateDto } from "../../../utils/src";
-import { FindSagaStatusQueryDto } from "dtos/saga.dtos";
+import { FindSagaStatusQueryDto } from "./../dtos/saga.dtos";
 
 export class SagaController {
   private sagaService: SagaService;
