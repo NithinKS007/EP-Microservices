@@ -36,7 +36,7 @@ export class SagaRecoveryJob {
    * Used in: Saga Orchestrator recovery flow
    * Triggered via: Cron job
    */
-  private async recoverAbandonedSagas() {
+  public async recoverAbandonedSagas() {
     const TIMEOUT_MINUTES = 10;
 
     // Find sagas that haven't been updated in 10 minutes and are still running

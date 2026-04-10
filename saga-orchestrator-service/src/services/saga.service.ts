@@ -615,4 +615,97 @@ export class SagaService {
       currency: payment.currency,
     };
   }
+
+  /**
+   * Retrieves the high-level status of a saga for polling.
+   */
+  async findSagaStatus(sagaId: string) {
+    const saga = await this.sagaRepository.findById(sagaId);
+    if (!saga) {
+      throw new NotFoundError("Saga not found, Please try again later");
+    }
+
+    return {
+      id: saga.id,
+      sagaType: saga.sagaType,
+      status: saga.status,
+      currentStep: saga.currentStep,
+      errorMessage: saga.errorMessage,
+      createdAt: saga.createdAt,
+      updatedAt: saga.updatedAt,
+    };
+  }
+
+  /**
+   * Retrieves the detailed status of a saga including all steps.
+   */
+  async findSagaWithSteps(sagaId: string) {
+    const [saga, steps] = await Promise.all([
+      this.findSagaStatus(sagaId),
+      this.sagaStepRepository.findBySagaId(sagaId),
+    ]);
+
+    // Sort steps by their order to make it readable
+    const sortedSteps = [...steps].sort((a, b) => a.stepOrder - b.stepOrder);
+
+    return {
+      ...saga,
+      steps: sortedSteps.map((step) => ({
+        id: step.id,
+        stepName: step.stepName,
+        stepOrder: step.stepOrder,
+        status: step.status,
+        retryCount: step.retryCount,
+        errorMessage: step.errorMessage,
+        updatedAt: step.updatedAt,
+      })),
+    };
+  }
+
+  /**
+   * Admin Endpoint: Forcefully fail and roll back a stuck saga.
+   */
+  async forceFailAndCompensate(sagaId: string) {
+    const saga = await this.sagaRepository.findById(sagaId);
+    if (!saga) throw new NotFoundError("Saga not found, Please try again later");
+
+    if (saga.status !== "started" && saga.status !== "in_progress") {
+      throw new ConflictError(`Cannot compensate a saga in ${saga.status} status.`);
+    }
+
+    if (saga.sagaType === "INITIATE_PAYMENT") {
+      const steps = await this.sagaStepRepository.findBySagaId(sagaId);
+      const stepMap = Object.fromEntries(steps.map((step) => [step.stepName, step]));
+
+      const bookingStatusStep = stepMap["BOOKING_STATUS_SERVICE"];
+      const seatStep = stepMap["SEAT_SERVICE"];
+
+      await this.sagaRepository.update(
+        { id: sagaId },
+        { status: "compensating", errorMessage: "Admin forcefully compensated saga" },
+      );
+
+      await this.compensateInitiatePaymentSaga({
+        sagaId,
+        bookingId: saga.referenceId,
+        bookingStatusStep,
+        seatStep,
+        bookingMarkedInitiated: ["completed", "in_progress"].includes(bookingStatusStep?.status),
+        seatsLocked: ["completed", "in_progress"].includes(seatStep?.status),
+      });
+
+      return { message: "Saga successfully rolled back via Compensation." };
+    }
+
+    if (saga.sagaType === "CANCEL_EVENT") {
+      // The worker picks this up and does best-effort compensation via Kafka
+      await this.sagaRepository.update(
+        { id: sagaId },
+        { status: "failed", errorMessage: "Admin forcefully failed the Cancel Event saga." },
+      );
+      return { message: "Cancel Event Saga forcefully failed." };
+    }
+
+    throw new ValidationError("Unsupported Saga Type for forced compensation");
+  }
 }

@@ -14,6 +14,8 @@ import { OutboxEventRepository } from "./repositories/outbox.event.repository";
 import { OutboxWorker } from "./utils/outbox.worker";
 import { CancelEventSagaConsumer } from "./utils/cancel.event.saga.consumer";
 import { SagaGrpcController } from "./grpc/saga.server";
+import { SagaController } from "./controllers/saga.controller";
+
 const container = createContainer();
 
 const clientId = envConfig.KAFKA_CLIENT_ID;
@@ -50,6 +52,7 @@ container.register({
   sagaRecoveryJob: asClass(SagaRecoveryJob).scoped(),
   cancelEventSagaConsumer: asClass(CancelEventSagaConsumer).scoped(),
   sagaGrpcController: asClass(SagaGrpcController).scoped(),
+  sagaController: asClass(SagaController).scoped(),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 

@@ -7,6 +7,7 @@ import {
   IsInt,
   Min,
   IsOptional,
+  IsNotEmpty,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { SagaStatus } from "./../entity/saga.entity";
@@ -75,4 +76,12 @@ export class FindSagaQueryDto {
   @IsOptional()
   @IsEnum(SagaStatus)
   status?: SagaStatus;
+}
+
+export class FindSagaStatusQueryDto {
+
+  @IsNotEmpty()
+  @IsUUID()
+  @Type(() => String)
+  id!: string;
 }
