@@ -49,6 +49,7 @@ services:
       - backend
     depends_on:
       - postgres
+    # http://localhost:5050
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
@@ -316,6 +317,24 @@ services:
       interval: 30m
       timeout: 5s
       retries: 5
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    restart: always
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - http
+      - gateway:3000
+    depends_on:
+      - gateway
+    networks:
+      - backend
+
+    # http://localhost:4040/inspect/http 
 
 volumes:
   pgdata:

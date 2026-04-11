@@ -57,7 +57,7 @@ class ServiceProxy {
       name: "payment-service",
       path: "/payment-service",
       url: envConfig.PAYMENT_SERVICE_URL,
-      publicRoutes: ["/health"],
+      publicRoutes: ["/health", "/api/v1/payment/webhook/razorpay"],
     },
   ];
 
