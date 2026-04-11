@@ -8,8 +8,7 @@ model BookingSeat {
     updatedAt DateTime @updatedAt @map("updated_at")
 
     booking   Booking  @relation(fields: [bookingId], references: [id])
-
-    @@unique([bookingId, seatId])
+    
     @@index([bookingId])
     @@map("bookingSeat")
 }

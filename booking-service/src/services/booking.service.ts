@@ -10,7 +10,14 @@ import { IBookingSeatRepository } from "../interface/IBooking.seat.repository";
 import { UnitOfWork } from "../repositories/unity.of.work";
 import { EventServiceGrpcClient } from "../grpc/event.client";
 import { PaymentServiceGrpcClient } from "./../grpc/payment.client";
-import { AuthReq, logger, PaymentStatus as GrpcPaymentStatus } from "../../../utils/src";
+import {
+  AuthReq,
+  logger,
+  PaymentStatus,
+  EventStatus,
+  SeatStatus,
+  SeatTier,
+} from "../../../utils/src";
 
 export class BookingService {
   private readonly bookingRepository: IBookingRepository;
@@ -60,6 +67,18 @@ export class BookingService {
       if (existingBooking) {
         return existingBooking;
       }
+    }
+
+    // Application-level seat conflict check (replaces removed DB unique constraint)
+    const seatIds = seats.map((s) => s.id);
+    const conflictingSeats = await this.bookingRepository.findActiveBookingsBySeatIds(seatIds);
+    if (conflictingSeats.length > 0) {
+      const conflictDetails = conflictingSeats
+        .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
+        .join(", ");
+      throw new ConflictError(
+        `The following seats are already unavailable: ${conflictDetails}`,
+      );
     }
 
     const booking = await this.unitOfWork.withTransaction(async (repos) => {
@@ -241,7 +260,7 @@ export class BookingService {
           eventDate: event?.eventDate,
           venueName: event?.venueName,
           description: event?.description,
-          status: event?.status,
+          status: this.mapEventStatus(event?.status),
         },
         // Seat Enrichment (Map internal IDs to readable labels)
         BookedSeats:
@@ -255,8 +274,8 @@ export class BookingService {
               updatedAt: bs.updatedAt,
               seatDetails: {
                 seatNumber: seat?.seatNumber,
-                seatTier: seat?.seatTier,
-                seatStatus: seat?.seatStatus,
+                seatTier: this.mapSeatTier(seat?.seatTier),
+                seatStatus: this.mapSeatStatus(seat?.seatStatus),
               },
             };
           }) || [],
@@ -265,7 +284,7 @@ export class BookingService {
           id: payment?.id,
           amount: Number(payment?.amount),
           currency: payment?.currency,
-          status: payment?.status,
+          status: this.mapPaymentStatus(payment?.status),
           provider: payment?.provider,
           providerRef: payment?.providerRef,
         },
@@ -312,7 +331,7 @@ export class BookingService {
         eventDate: event?.eventDate,
         venueName: event?.venueName,
         description: event?.description,
-        status: event?.status,
+        status: this.mapEventStatus(event?.status),
       },
 
       bookedSeats:
@@ -328,8 +347,8 @@ export class BookingService {
 
             seatDetails: {
               seatNumber: seat?.seatNumber,
-              seatTier: seat?.seatTier,
-              seatStatus: seat?.seatStatus,
+              seatTier: this.mapSeatTier(seat?.seatTier),
+              seatStatus: this.mapSeatStatus(seat?.seatStatus),
             },
           };
         }) || [],
@@ -338,7 +357,7 @@ export class BookingService {
         id: payment?.id,
         amount: payment?.amount ? Number(payment.amount) : 0,
         currency: payment?.currency,
-        status: payment?.status,
+        status: this.mapPaymentStatus(payment?.status),
         provider: payment?.provider,
         providerRef: payment?.providerRef,
       },
@@ -362,7 +381,7 @@ export class BookingService {
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
-    if (!payment || payment.status !== GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
+    if (!payment || payment.status !== PaymentStatus.PAYMENT_STATUS_SUCCESS) {
       throw new ConflictError("Only successfully paid bookings can be confirmed");
     }
 
@@ -391,7 +410,7 @@ export class BookingService {
     const payment = await this.findSinglePaymentByBookingId(id);
     if (
       booking.status === "CONFIRMED" &&
-      payment?.status !== GrpcPaymentStatus.PAYMENT_STATUS_REFUNDED
+      payment?.status !== PaymentStatus.PAYMENT_STATUS_REFUNDED
     ) {
       throw new ConflictError("Confirmed bookings must be refunded before cancellation");
     }
@@ -419,7 +438,7 @@ export class BookingService {
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
-    if (payment?.status === GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
+    if (payment?.status === PaymentStatus.PAYMENT_STATUS_SUCCESS) {
       throw new ConflictError("Paid bookings cannot be expired");
     }
 
@@ -452,5 +471,57 @@ export class BookingService {
     });
     const payments = paymentsResponse.payments ?? [];
     return payments[payments.length - 1];
+  }
+
+  private mapEventStatus(status: number | undefined): string {
+    switch (status) {
+      case EventStatus.EVENT_STATUS_ACTIVE:
+        return "ACTIVE";
+      case EventStatus.EVENT_STATUS_CANCELLED:
+        return "CANCELLED";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapSeatTier(tier: number | undefined): string {
+    switch (tier) {
+      case SeatTier.SEAT_TIER_VIP:
+        return "VIP";
+      case SeatTier.SEAT_TIER_REGULAR:
+        return "REGULAR";
+      case SeatTier.SEAT_TIER_ECONOMY:
+        return "ECONOMY";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapSeatStatus(status: number | undefined): string {
+    switch (status) {
+      case SeatStatus.SEAT_STATUS_AVAILABLE:
+        return "AVAILABLE";
+      case SeatStatus.SEAT_STATUS_LOCKED:
+        return "LOCKED";
+      case SeatStatus.SEAT_STATUS_SOLD:
+        return "SOLD";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapPaymentStatus(status: number | undefined): string {
+    switch (status) {
+      case PaymentStatus.PAYMENT_STATUS_INITIATED:
+        return "INITIATED";
+      case PaymentStatus.PAYMENT_STATUS_SUCCESS:
+        return "SUCCESS";
+      case PaymentStatus.PAYMENT_STATUS_FAILED:
+        return "FAILED";
+      case PaymentStatus.PAYMENT_STATUS_REFUNDED:
+        return "REFUNDED";
+      default:
+        return "UNSPECIFIED";
+    }
   }
 }

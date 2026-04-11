@@ -43,4 +43,6 @@ export interface IBookingRepository extends DatabaseAdapter<
       bookingSeats: true;
     };
   }> | null>;
+
+  findActiveBookingsBySeatIds(seatIds: string[]): Promise<{ seatId: string; bookingId: string; status: string }[]>;
 }
