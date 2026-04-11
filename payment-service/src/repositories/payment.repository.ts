@@ -102,6 +102,23 @@ export class PaymentRepository
     };
   }
 
+  async bulkFailPayments(bookingIds: string[]): Promise<number> {
+    if (bookingIds.length === 0) return 0;
+
+    const result = await this.prisma.payment.updateMany({
+      where: {
+        bookingId: { in: bookingIds },
+        status: "INITIATED",
+      },
+      data: {
+        status: "FAILED",
+        updatedAt: new Date(),
+      },
+    });
+
+    return result.count;
+  }
+
   async findByBookingId(bookingId: string): Promise<PaymentModel | null> {
     return await this.prisma.payment.findFirst({
       where: {

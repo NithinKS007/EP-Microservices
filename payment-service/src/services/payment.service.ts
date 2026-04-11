@@ -353,6 +353,16 @@ export class PaymentService {
   }
 
   /**
+   * Fails multiple initiation records in bulk.
+   * Used in: Booking expiry cleanup flow
+   * Triggered via: gRPC
+   */
+  async bulkFailPayments(bookingIds: string[]): Promise<number> {
+    if (!bookingIds.length) return 0;
+    return await this.paymentRepository.bulkFailPayments(bookingIds);
+  }
+
+  /**
    * Helper to send refund emails asynchronously.
    */
   private sendRefundEmail(payment: {

@@ -3,6 +3,8 @@ model BookingSeat {
     bookingId String   @map("fk_booking_id") @db.Uuid
     seatId    String   @map("fk_seat_id") @db.Uuid
     price     Decimal  @db.Decimal(10, 2)
+    seatNumber String   @map("seat_number")
+    seatTier   String   @map("seat_tier")
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")

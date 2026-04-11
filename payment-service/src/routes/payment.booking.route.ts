@@ -17,5 +17,9 @@ router.post(
   asyncHandler(bookingController.initiate.bind(bookingController)),
 );
 
+router.get(
+  "/bookings/:id",
+  asyncHandler(bookingController.findPaymentByBookingId.bind(bookingController)),
+);
 
 export default router;

@@ -76,10 +76,17 @@ export class BookingService {
       const conflictDetails = conflictingSeats
         .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
         .join(", ");
-      throw new ConflictError(
-        `The following seats are already unavailable: ${conflictDetails}`,
-      );
+      throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
     }
+
+    // Snapshot seat details from Event Service
+    const eventDetails = await this.eventServiceGrpcClient.findEventsByIdsWithSeats({
+      eventIds: [eventId],
+    });
+    const event = eventDetails.events?.find((e) => e.id === eventId);
+    if (!event) throw new NotFoundError("Event not found");
+
+    const seatMap = new Map(event.seats?.map((s) => [s.id, s]) || []);
 
     const booking = await this.unitOfWork.withTransaction(async (repos) => {
       const createdBooking = await repos.bookingRepository.create({
@@ -91,10 +98,15 @@ export class BookingService {
         idempotencyKey,
         bookingSeats: {
           createMany: {
-            data: seats.map((s) => ({
-              seatId: s.id,
-              price: s.price,
-            })),
+            data: seats.map((s) => {
+              const seatSnapshot = seatMap.get(s.id);
+              return {
+                seatId: s.id,
+                price: s.price,
+                seatNumber: seatSnapshot?.seatNumber || "N/A",
+                seatTier: this.mapSeatTier(seatSnapshot?.seatTier),
+              };
+            }),
           },
         },
       });
@@ -265,7 +277,6 @@ export class BookingService {
         // Seat Enrichment (Map internal IDs to readable labels)
         BookedSeats:
           booking.bookingSeats?.map((bs) => {
-            const seat = event?.seats?.find((s) => s.id === bs.seatId);
             return {
               id: bs.seatId,
               bookingId: bs.bookingId,
@@ -273,9 +284,8 @@ export class BookingService {
               createdAt: bs.createdAt,
               updatedAt: bs.updatedAt,
               seatDetails: {
-                seatNumber: seat?.seatNumber,
-                seatTier: this.mapSeatTier(seat?.seatTier),
-                seatStatus: this.mapSeatStatus(seat?.seatStatus),
+                seatNumber: bs.seatNumber,
+                seatTier: bs.seatTier
               },
             };
           }) || [],
@@ -336,8 +346,6 @@ export class BookingService {
 
       bookedSeats:
         booking.bookingSeats?.map((bs) => {
-          const seat = event?.seats?.find((s) => s.id === bs.seatId);
-
           return {
             id: bs.seatId,
             bookingId: bs.bookingId,
@@ -346,9 +354,8 @@ export class BookingService {
             updatedAt: bs.updatedAt,
 
             seatDetails: {
-              seatNumber: seat?.seatNumber,
-              seatTier: this.mapSeatTier(seat?.seatTier),
-              seatStatus: this.mapSeatStatus(seat?.seatStatus),
+              seatNumber: bs.seatNumber,
+              seatTier: bs.seatTier
             },
           };
         }) || [],
@@ -376,7 +383,7 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
+    if ( ["CANCELLED","EXPIRED"].includes(booking.status)) {
       throw new ConflictError("Terminal bookings cannot be confirmed");
     }
 
@@ -416,6 +423,12 @@ export class BookingService {
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+
+    // Fail any INITIATED payment when cancelling a non-confirmed booking
+    if (["PENDING","PAYMENT_INITIATED"].includes(booking.status) ) {
+      await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
+    }
+
     await this.bookingRepository.update({ id }, { status: "CANCELLED" });
 
     return await this.findBookingByIdWithDetails(id);
@@ -433,7 +446,7 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if (booking.status === "CANCELLED" || booking.status === "CONFIRMED") {
+    if (["CANCELLED","CONFIRMED"].includes(booking.status)) {
       throw new ConflictError("Only open bookings can be expired");
     }
 
@@ -443,6 +456,7 @@ export class BookingService {
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+    await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
     await this.bookingRepository.update({ id }, { status: "EXPIRED" });
 
     return await this.findBookingByIdWithDetails(id);

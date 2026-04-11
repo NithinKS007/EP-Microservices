@@ -82,6 +82,8 @@ export {
   PaymentServiceServer,
   PaymentServiceService,
   PaymentStatus,
+  BulkFailPaymentsRequest,
+  BulkFailPaymentsResponse,
 } from "./grpc/generated/payment/v1/payment";
 
 export {
