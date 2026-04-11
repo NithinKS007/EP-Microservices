@@ -138,6 +138,21 @@ export class PaymentService {
       return;
     }
 
+    // Special case: Late success received for a payment that was already marked as FAILED.
+    // This happens if the user clicks Failure then Success in the same Razorpay modal.
+    // Since the booking was already cancelled upon the first failure, we must refund.
+    if (existing.status === "FAILED") {
+      logger.warn(
+        `Late success received for FAILED payment ${existing.id}. Initiated automatic refund.`,
+      );
+
+      // 1. Mark as SUCCESS first to record that we actually received the money
+      await this.paymentRepository.update({ id: existing.id }, { status: "SUCCESS" });
+
+      // 2. Trigger the refund flow (bypass actor check since it's internal)
+      return await this.refundPayment(existing.id, undefined, true);
+    }
+
     await this.unitOfWork.withTransaction(async (repos) => {
       await repos.paymentRepository.update({ id: existing.id }, { status: "SUCCESS" });
 
@@ -457,7 +472,7 @@ export class PaymentService {
    * Used in: Payment refund flow
    * Triggered via: REST
    */
-  async refundPayment(paymentId: string, actor?: AuthReq["user"]) {
+  async refundPayment(paymentId: string, actor?: AuthReq["user"], isInternal = false) {
     if (!paymentId) {
       throw new ValidationError("Payment id is required");
     }
@@ -467,7 +482,7 @@ export class PaymentService {
       throw new NotFoundError("Payment not found, Please try again later");
     }
 
-    if (actor?.role !== "ADMIN" && actor?.id !== payment.userId) {
+    if (!isInternal && actor?.role !== "ADMIN" && actor?.id !== payment.userId) {
       throw new ForbiddenError("You are not allowed to refund this payment");
     }
 

@@ -384,12 +384,12 @@ export class BookingService {
     }
 
     if ( ["CANCELLED","EXPIRED"].includes(booking.status)) {
-      throw new ConflictError("Terminal bookings cannot be confirmed");
+      throw new ConflictError("Booking is already cancelled or expired,Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
     if (!payment || payment.status !== PaymentStatus.PAYMENT_STATUS_SUCCESS) {
-      throw new ConflictError("Only successfully paid bookings can be confirmed");
+      throw new ConflictError("Only successfully paid bookings can be confirmed,Please try again later");
     }
 
     await this.eventServiceGrpcClient.confirmSeats({ bookingId: id });
@@ -411,7 +411,7 @@ export class BookingService {
     }
 
     if (booking.status === "EXPIRED") {
-      throw new ConflictError("Expired bookings cannot be cancelled");
+      throw new ConflictError("Expired bookings cannot be cancelled,Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
@@ -419,7 +419,7 @@ export class BookingService {
       booking.status === "CONFIRMED" &&
       payment?.status !== PaymentStatus.PAYMENT_STATUS_REFUNDED
     ) {
-      throw new ConflictError("Confirmed bookings must be refunded before cancellation");
+      throw new ConflictError("Confirmed bookings must be refunded before cancellation,Please try again later");
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
