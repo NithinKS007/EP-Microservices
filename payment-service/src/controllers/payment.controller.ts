@@ -6,7 +6,6 @@ import {
   GetPaymentByBookingIdRequestDto,
   GetPaymentByIdRequestDto,
   InitiatePaymentRequestDto,
-  RefundPaymentRequestDto,
 } from "../dtos/payment.dtos";
 import { SagaServiceGrpcClient } from "../grpc/saga.client";
 
@@ -51,14 +50,4 @@ export class PaymentController {
     sendResponse(res, StatusCodes.OK, payment, "Payment initiated successfully");
   }
 
-  /**
-   * Refunds a captured payment and schedules downstream booking/seat rollback.
-   * Used in: Payment refund flow
-   * Triggered via: REST
-   */
-  async refund(req: AuthReq, res: Response): Promise<void> {
-    const data = await validateDto(RefundPaymentRequestDto, req.params);
-    const payment = await this.paymentService.refundPayment(data.id, req.user);
-    sendResponse(res, StatusCodes.OK, payment, "Payment refund initiated successfully");
-  }
 }

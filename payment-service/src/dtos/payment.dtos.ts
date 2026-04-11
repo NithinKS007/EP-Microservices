@@ -46,7 +46,4 @@ export class InitiatePaymentRequestDto {
   id!: string;
 }
 
-export class RefundPaymentRequestDto {
-  @IsUUID()
-  id!: string;
-}
+

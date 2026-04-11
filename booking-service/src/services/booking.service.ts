@@ -417,9 +417,9 @@ export class BookingService {
     const payment = await this.findSinglePaymentByBookingId(id);
     if (
       booking.status === "CONFIRMED" &&
-      payment?.status !== PaymentStatus.PAYMENT_STATUS_REFUNDED
+      payment?.status === PaymentStatus.PAYMENT_STATUS_SUCCESS
     ) {
-      throw new ConflictError("Confirmed bookings must be refunded before cancellation,Please try again later");
+      await this.paymentServiceGrpcClient.bulkRefundPayments({ bookingIds: [id] });
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });

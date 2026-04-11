@@ -6,6 +6,8 @@ import {
   FindPaymentsByBookingIdsResponse,
   BulkFailPaymentsRequest,
   BulkFailPaymentsResponse,
+  BulkRefundPaymentsRequest,
+  BulkRefundPaymentsResponse,
 } from "../../../utils/src";
 
 export class PaymentServiceGrpcClient {
@@ -38,6 +40,20 @@ export class PaymentServiceGrpcClient {
   bulkFailPayments(data: BulkFailPaymentsRequest): Promise<BulkFailPaymentsResponse> {
     return new Promise((resolve, reject) => {
       this.client.bulkFailPayments(data, (err, res) => {
+        if (err) return reject(fromGrpcError(err));
+        resolve(res);
+      });
+    });
+  }
+
+  /**
+   * Reconciles payments in bulk for a cancelled booking.
+   * Used in: Booking cancellation flow
+   * Triggered via: internal service call
+   */
+  bulkRefundPayments(data: BulkRefundPaymentsRequest): Promise<BulkRefundPaymentsResponse> {
+    return new Promise((resolve, reject) => {
+      this.client.bulkRefundPayments(data, (err, res) => {
         if (err) return reject(fromGrpcError(err));
         resolve(res);
       });
