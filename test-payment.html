@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Razorpay Test Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px;">
+
+    <h2>Razorpay Test Payment</h2>
+
+    <div style="background: #f0f0f0; padding: 15px; border-radius: 4px; margin: 10px 0; font-size: 14px;">
+        <strong>How to use:</strong><br>
+        1. Call <code>POST /payment-service/api/v1/bookings/:id/payments/initiate</code> in Postman<br>
+        2. Copy the <code>razorpayOrderId</code> and <code>amount</code> from the response<br>
+        3. Paste them below and click "Pay Now"
+    </div>
+
+    <label>Razorpay Order ID (from /initiate response)</label>
+    <input
+        type="text"
+        id="orderId"
+        placeholder="order_Sc9d85SeEwPgOR"
+        style="display: block; width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; box-sizing: border-box;"
+    >
+
+    <label>Amount in paise (from /initiate response)</label>
+    <input
+        type="number"
+        id="amount"
+        placeholder="27000"
+        style="display: block; width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; box-sizing: border-box;"
+    >
+
+    <button
+        onclick="pay()"
+        style="display: block; width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; box-sizing: border-box; background: #528FF0; color: white; border: none; cursor: pointer; border-radius: 4px;"
+        onmouseover="this.style.background='#3A6FD8'"
+        onmouseout="this.style.background='#528FF0'"
+    >
+        Pay Now
+    </button>
+
+    <script>
+        const pay = () => {
+            const orderId = document.getElementById('orderId').value.trim();
+            const amount = parseInt(document.getElementById('amount').value.trim());
+
+            if (!orderId || !amount) {
+                alert('Please fill in both fields');
+                return;
+            }
+
+            const options = {
+                key: 'rzp_test_zFdxq3EZqGS5G0',
+                amount: amount,
+                currency: 'INR',
+                name: 'Event Booking Platform',
+                description: 'Booking Payment',
+                order_id: orderId,
+                handler: (response) => {
+                    alert(
+                        'Payment Successful!\n\n' +
+                        'Payment ID: ' + response.razorpay_payment_id + '\n' +
+                        'Order ID: ' + response.razorpay_order_id + '\n' +
+                        'Signature: ' + response.razorpay_signature
+                    );
+                },
+                theme: { color: '#528FF0' }
+            };
+
+            const rzp = new Razorpay(options);
+
+            rzp.on('payment.failed', (response) => {
+                alert('Payment Failed: ' + response.error.description);
+            });
+
+            rzp.open();
+        };
+    </script>
+</body>
+</html>

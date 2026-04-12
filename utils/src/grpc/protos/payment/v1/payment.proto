@@ -7,6 +7,17 @@ service PaymentService {
   rpc FindPaymentsByBookingIds(FindPaymentsByBookingIdsRequest) returns (FindPaymentsByBookingIdsResponse);
   rpc UpdatePaymentStatus(UpdatePaymentStatusRequest) returns (UpdatePaymentStatusResponse);
   rpc BulkRefundPayments(BulkRefundPaymentsRequest) returns (BulkRefundPaymentsResponse);
+  rpc BulkFailPayments(BulkFailPaymentsRequest) returns (BulkFailPaymentsResponse);
+}
+
+message BulkFailPaymentsRequest {
+  repeated string booking_ids = 1;
+}
+
+message BulkFailPaymentsResponse {
+  bool success = 1;
+  string message = 2;
+  int32 affected_count = 3;
 }
 
 enum PaymentStatus {

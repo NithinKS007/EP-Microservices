@@ -1,24 +1,29 @@
 import { IBookingRepository } from "./../interface/IBooking.repository";
 import { CronRunner, logger } from "../../../utils/src";
 import { EventServiceGrpcClient } from "./../grpc/event.client";
+import { PaymentServiceGrpcClient } from "./../grpc/payment.client";
 
 export class BookingExpiryJob {
   private readonly cronRunner: CronRunner;
   private readonly bookingRepository: IBookingRepository;
   private readonly eventServiceGrpcClient: EventServiceGrpcClient;
+  private readonly paymentServiceGrpcClient: PaymentServiceGrpcClient;
 
   constructor({
     cronRunner,
     bookingRepository,
     eventServiceGrpcClient,
+    paymentServiceGrpcClient,
   }: {
     cronRunner: CronRunner;
     bookingRepository: IBookingRepository;
     eventServiceGrpcClient: EventServiceGrpcClient;
+    paymentServiceGrpcClient: PaymentServiceGrpcClient;
   }) {
     this.cronRunner = cronRunner;
     this.bookingRepository = bookingRepository;
     this.eventServiceGrpcClient = eventServiceGrpcClient;
+    this.paymentServiceGrpcClient = paymentServiceGrpcClient;
   }
 
   start() {
@@ -40,9 +45,11 @@ export class BookingExpiryJob {
 
     const bookingIds = expiredBookings.map((booking) => booking.id);
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds });
+    await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds });
+
     const affectedCount = await this.bookingRepository.bulkExpireBookings(bookingIds);
 
-    logger.info(`Expired ${affectedCount} bookings`);
+    logger.info(`Expired ${affectedCount} bookings and their associated payments`);
     return { affectedCount };
   }
 }

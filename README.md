@@ -1,6 +1,13 @@
 # Event Booking Platform Microservices
 
+## API Documentation
+
+[View Full API Docs](https://documenter.getpostman.com/view/52001146/2sBXitD7vk)
+
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://god.gw.postman.com/run-collection/2sBXitD7vk)
+
 Distributed event-booking backend built around bounded-context services for  booking, payment, and orchestration. The system uses an API gateway, Kafka for asynchronous coordination, gRPC for low-latency internal RPC, and PostgreSQL-backed Prisma models per service.
+
 
 ## Executive Summary
 

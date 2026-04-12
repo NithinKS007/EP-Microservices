@@ -168,4 +168,37 @@ export class BookingRepository
       },
     });
   }
+
+  /**
+   * Finds seats that are currently held by an active (non-terminal) booking.
+   * Used in: Booking create flow to prevent double-booking seats.
+   * Triggered via: REST
+   */
+  async findActiveBookingsBySeatIds(seatIds: string[]): Promise<{ seatId: string; bookingId: string; status: string }[]> {
+    if (seatIds.length === 0) return [];
+
+    const activeSeats = await this.prisma.bookingSeat.findMany({
+      where: {
+        seatId: { in: seatIds },
+        booking: {
+          status: {
+            in: ["PENDING", "PAYMENT_INITIATED", "CONFIRMED"],
+          },
+        },
+      },
+      select: {
+        seatId: true,
+        bookingId: true,
+        booking: {
+          select: { status: true },
+        },
+      },
+    });
+
+    return activeSeats.map((s) => ({
+      seatId: s.seatId,
+      bookingId: s.bookingId,
+      status: s.booking.status,
+    }));
+  }
 }

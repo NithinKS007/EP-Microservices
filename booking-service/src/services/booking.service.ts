@@ -10,7 +10,14 @@ import { IBookingSeatRepository } from "../interface/IBooking.seat.repository";
 import { UnitOfWork } from "../repositories/unity.of.work";
 import { EventServiceGrpcClient } from "../grpc/event.client";
 import { PaymentServiceGrpcClient } from "./../grpc/payment.client";
-import { AuthReq, logger, PaymentStatus as GrpcPaymentStatus } from "../../../utils/src";
+import {
+  AuthReq,
+  logger,
+  PaymentStatus,
+  EventStatus,
+  SeatStatus,
+  SeatTier,
+} from "../../../utils/src";
 
 export class BookingService {
   private readonly bookingRepository: IBookingRepository;
@@ -62,6 +69,25 @@ export class BookingService {
       }
     }
 
+    // Application-level seat conflict check (replaces removed DB unique constraint)
+    const seatIds = seats.map((s) => s.id);
+    const conflictingSeats = await this.bookingRepository.findActiveBookingsBySeatIds(seatIds);
+    if (conflictingSeats.length > 0) {
+      const conflictDetails = conflictingSeats
+        .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
+        .join(", ");
+      throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
+    }
+
+    // Snapshot seat details from Event Service
+    const eventDetails = await this.eventServiceGrpcClient.findEventsByIdsWithSeats({
+      eventIds: [eventId],
+    });
+    const event = eventDetails.events?.find((e) => e.id === eventId);
+    if (!event) throw new NotFoundError("Event not found");
+
+    const seatMap = new Map(event.seats?.map((s) => [s.id, s]) || []);
+
     const booking = await this.unitOfWork.withTransaction(async (repos) => {
       const createdBooking = await repos.bookingRepository.create({
         userId,
@@ -72,10 +98,15 @@ export class BookingService {
         idempotencyKey,
         bookingSeats: {
           createMany: {
-            data: seats.map((s) => ({
-              seatId: s.id,
-              price: s.price,
-            })),
+            data: seats.map((s) => {
+              const seatSnapshot = seatMap.get(s.id);
+              return {
+                seatId: s.id,
+                price: s.price,
+                seatNumber: seatSnapshot?.seatNumber || "N/A",
+                seatTier: this.mapSeatTier(seatSnapshot?.seatTier),
+              };
+            }),
           },
         },
       });
@@ -241,12 +272,11 @@ export class BookingService {
           eventDate: event?.eventDate,
           venueName: event?.venueName,
           description: event?.description,
-          status: event?.status,
+          status: this.mapEventStatus(event?.status),
         },
         // Seat Enrichment (Map internal IDs to readable labels)
         BookedSeats:
           booking.bookingSeats?.map((bs) => {
-            const seat = event?.seats?.find((s) => s.id === bs.seatId);
             return {
               id: bs.seatId,
               bookingId: bs.bookingId,
@@ -254,9 +284,8 @@ export class BookingService {
               createdAt: bs.createdAt,
               updatedAt: bs.updatedAt,
               seatDetails: {
-                seatNumber: seat?.seatNumber,
-                seatTier: seat?.seatTier,
-                seatStatus: seat?.seatStatus,
+                seatNumber: bs.seatNumber,
+                seatTier: bs.seatTier
               },
             };
           }) || [],
@@ -265,7 +294,7 @@ export class BookingService {
           id: payment?.id,
           amount: Number(payment?.amount),
           currency: payment?.currency,
-          status: payment?.status,
+          status: this.mapPaymentStatus(payment?.status),
           provider: payment?.provider,
           providerRef: payment?.providerRef,
         },
@@ -312,13 +341,11 @@ export class BookingService {
         eventDate: event?.eventDate,
         venueName: event?.venueName,
         description: event?.description,
-        status: event?.status,
+        status: this.mapEventStatus(event?.status),
       },
 
       bookedSeats:
         booking.bookingSeats?.map((bs) => {
-          const seat = event?.seats?.find((s) => s.id === bs.seatId);
-
           return {
             id: bs.seatId,
             bookingId: bs.bookingId,
@@ -327,9 +354,8 @@ export class BookingService {
             updatedAt: bs.updatedAt,
 
             seatDetails: {
-              seatNumber: seat?.seatNumber,
-              seatTier: seat?.seatTier,
-              seatStatus: seat?.seatStatus,
+              seatNumber: bs.seatNumber,
+              seatTier: bs.seatTier
             },
           };
         }) || [],
@@ -338,7 +364,7 @@ export class BookingService {
         id: payment?.id,
         amount: payment?.amount ? Number(payment.amount) : 0,
         currency: payment?.currency,
-        status: payment?.status,
+        status: this.mapPaymentStatus(payment?.status),
         provider: payment?.provider,
         providerRef: payment?.providerRef,
       },
@@ -357,13 +383,13 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
-      throw new ConflictError("Terminal bookings cannot be confirmed");
+    if ( ["CANCELLED","EXPIRED"].includes(booking.status)) {
+      throw new ConflictError("Booking is already cancelled or expired,Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
-    if (!payment || payment.status !== GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
-      throw new ConflictError("Only successfully paid bookings can be confirmed");
+    if (!payment || payment.status !== PaymentStatus.PAYMENT_STATUS_SUCCESS) {
+      throw new ConflictError("Only successfully paid bookings can be confirmed,Please try again later");
     }
 
     await this.eventServiceGrpcClient.confirmSeats({ bookingId: id });
@@ -385,18 +411,24 @@ export class BookingService {
     }
 
     if (booking.status === "EXPIRED") {
-      throw new ConflictError("Expired bookings cannot be cancelled");
+      throw new ConflictError("Expired bookings cannot be cancelled,Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
     if (
       booking.status === "CONFIRMED" &&
-      payment?.status !== GrpcPaymentStatus.PAYMENT_STATUS_REFUNDED
+      payment?.status === PaymentStatus.PAYMENT_STATUS_SUCCESS
     ) {
-      throw new ConflictError("Confirmed bookings must be refunded before cancellation");
+      await this.paymentServiceGrpcClient.bulkRefundPayments({ bookingIds: [id] });
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+
+    // Fail any INITIATED payment when cancelling a non-confirmed booking
+    if (["PENDING","PAYMENT_INITIATED"].includes(booking.status) ) {
+      await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
+    }
+
     await this.bookingRepository.update({ id }, { status: "CANCELLED" });
 
     return await this.findBookingByIdWithDetails(id);
@@ -414,16 +446,17 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if (booking.status === "CANCELLED" || booking.status === "CONFIRMED") {
-      throw new ConflictError("Only open bookings can be expired");
+    if (["CANCELLED","CONFIRMED"].includes(booking.status)) {
+      throw new ConflictError("Only open bookings can be expired, Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
-    if (payment?.status === GrpcPaymentStatus.PAYMENT_STATUS_SUCCESS) {
-      throw new ConflictError("Paid bookings cannot be expired");
+    if (payment?.status === PaymentStatus.PAYMENT_STATUS_SUCCESS) {
+      throw new ConflictError("Paid bookings cannot be expired, Please try again later");
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
+    await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
     await this.bookingRepository.update({ id }, { status: "EXPIRED" });
 
     return await this.findBookingByIdWithDetails(id);
@@ -452,5 +485,57 @@ export class BookingService {
     });
     const payments = paymentsResponse.payments ?? [];
     return payments[payments.length - 1];
+  }
+
+  private mapEventStatus(status: number | undefined): string {
+    switch (status) {
+      case EventStatus.EVENT_STATUS_ACTIVE:
+        return "ACTIVE";
+      case EventStatus.EVENT_STATUS_CANCELLED:
+        return "CANCELLED";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapSeatTier(tier: number | undefined): string {
+    switch (tier) {
+      case SeatTier.SEAT_TIER_VIP:
+        return "VIP";
+      case SeatTier.SEAT_TIER_REGULAR:
+        return "REGULAR";
+      case SeatTier.SEAT_TIER_ECONOMY:
+        return "ECONOMY";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapSeatStatus(status: number | undefined): string {
+    switch (status) {
+      case SeatStatus.SEAT_STATUS_AVAILABLE:
+        return "AVAILABLE";
+      case SeatStatus.SEAT_STATUS_LOCKED:
+        return "LOCKED";
+      case SeatStatus.SEAT_STATUS_SOLD:
+        return "SOLD";
+      default:
+        return "UNSPECIFIED";
+    }
+  }
+
+  private mapPaymentStatus(status: number | undefined): string {
+    switch (status) {
+      case PaymentStatus.PAYMENT_STATUS_INITIATED:
+        return "INITIATED";
+      case PaymentStatus.PAYMENT_STATUS_SUCCESS:
+        return "SUCCESS";
+      case PaymentStatus.PAYMENT_STATUS_FAILED:
+        return "FAILED";
+      case PaymentStatus.PAYMENT_STATUS_REFUNDED:
+        return "REFUNDED";
+      default:
+        return "UNSPECIFIED";
+    }
   }
 }

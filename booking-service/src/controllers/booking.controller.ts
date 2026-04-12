@@ -49,7 +49,7 @@ export class BookingController {
   async confirm(req: AuthReq, res: Response): Promise<void> {
     const data = await validateDto(BookingActionRequestDto, req.params);
     const booking = await this.bookingService.confirmBooking(data.id, req.user);
-    sendResponse(res, StatusCodes.OK, booking, "Booking confirmed successfully");
+    sendResponse(res, StatusCodes.OK, null, "Booking confirmed successfully");
   }
 
   /**
@@ -60,7 +60,7 @@ export class BookingController {
   async cancel(req: AuthReq, res: Response): Promise<void> {
     const data = await validateDto(BookingActionRequestDto, req.params);
     const booking = await this.bookingService.cancelBooking(data.id, req.user);
-    sendResponse(res, StatusCodes.OK, booking, "Booking cancelled successfully");
+    sendResponse(res, StatusCodes.OK, null, "Booking cancelled successfully");
   }
 
   /**
@@ -71,6 +71,6 @@ export class BookingController {
   async expire(req: AuthReq, res: Response): Promise<void> {
     const data = await validateDto(BookingActionRequestDto, req.params);
     const booking = await this.bookingService.expireBooking(data.id, req.user);
-    sendResponse(res, StatusCodes.OK, booking, "Booking expired successfully");
+    sendResponse(res, StatusCodes.OK, null, "Booking expired successfully");
   }
 }
