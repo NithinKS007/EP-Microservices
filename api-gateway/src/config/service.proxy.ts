@@ -59,6 +59,12 @@ class ServiceProxy {
       url: envConfig.PAYMENT_SERVICE_URL,
       publicRoutes: ["/health", "/api/v1/payment/webhook/razorpay"],
     },
+    {
+      name: "saga-orchestrator-service",
+      path: "/saga-orchestrator-service",
+      url: envConfig.SAGA_ORCHESTRATOR_SERVICE_URL,
+      publicRoutes: ["/health"],
+    },
   ];
 
   /**

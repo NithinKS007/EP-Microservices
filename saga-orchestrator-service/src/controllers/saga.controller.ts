@@ -20,21 +20,21 @@ export class SagaController {
   }
 
   /**
-   * GET /api/v1/sagas/:sagaId/status
+   * GET /api/v1/sagas/:id/status
    * Returns high-level status of the saga (fast).
    */
   async findSagaStatus(req: Request, res: Response): Promise<void> {
-    const dto = await validateDto(FindSagaStatusQueryDto, { id: req.params.sagaId });
+    const dto = await validateDto(FindSagaStatusQueryDto, { id: req.params.id });
     const status = await this.sagaService.findSagaStatus(dto.id);
     sendResponse(res, StatusCodes.OK, status, "Saga fetched successfully");
   }
 
   /**
-   * GET /api/v1/sagas/:sagaId
+   * GET /api/v1/sagas/:id
    * Returns detailed saga state including individual steps (for debugging/advanced UI).
    */
   async findSagaDetails(req: Request, res: Response): Promise<void> {
-    const dto = await validateDto(FindSagaStatusQueryDto, { id: req.params.sagaId });
+    const dto = await validateDto(FindSagaStatusQueryDto, { id: req.params.id });
     const details = await this.sagaService.findSagaWithSteps(dto.id);
     sendResponse(res, StatusCodes.OK, details, "Saga fetched successfully");
   }

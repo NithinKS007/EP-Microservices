@@ -447,12 +447,12 @@ export class BookingService {
     }
 
     if (["CANCELLED","CONFIRMED"].includes(booking.status)) {
-      throw new ConflictError("Only open bookings can be expired");
+      throw new ConflictError("Only open bookings can be expired, Please try again later");
     }
 
     const payment = await this.findSinglePaymentByBookingId(id);
     if (payment?.status === PaymentStatus.PAYMENT_STATUS_SUCCESS) {
-      throw new ConflictError("Paid bookings cannot be expired");
+      throw new ConflictError("Paid bookings cannot be expired, Please try again later");
     }
 
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });

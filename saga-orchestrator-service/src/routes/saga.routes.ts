@@ -17,8 +17,8 @@ const adminOnly = [
 router.use(adminOnly);
 
 // Status/Polling Endpoints
-router.get("/:sagaId/status", asyncHandler(sagaController.findSagaStatus.bind(sagaController)));
-router.get("/:sagaId", asyncHandler(sagaController.findSagaDetails.bind(sagaController)));
+router.get("/:id/status", asyncHandler(sagaController.findSagaStatus.bind(sagaController)));
+router.get("/:id", asyncHandler(sagaController.findSagaDetails.bind(sagaController)));
 
 // Advanced Admin Endpoints
 router.post("/recovery", asyncHandler(sagaController.triggerRecovery.bind(sagaController)));

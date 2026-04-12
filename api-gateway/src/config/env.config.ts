@@ -10,6 +10,7 @@ interface Env {
   EVENT_SERVICE_URL: string;
   BOOKING_SERVICE_URL: string;
   PAYMENT_SERVICE_URL: string;
+  SAGA_ORCHESTRATOR_SERVICE_URL: string;
 
   CLIENT_URL: string;
 
@@ -29,6 +30,7 @@ export const envConfig: Env = {
   EVENT_SERVICE_URL: process.env.EVENT_SERVICE_URL || "http://localhost:3003",
   BOOKING_SERVICE_URL: process.env.BOOKING_SERVICE_URL || "http://localhost:3004",
   PAYMENT_SERVICE_URL: process.env.PAYMENT_SERVICE_URL || "http://localhost:3005",
+  SAGA_ORCHESTRATOR_SERVICE_URL: process.env.SAGA_ORCHESTRATOR_SERVICE_URL || "http://localhost:3006",
 
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:3000",
 
