@@ -1,7 +1,7 @@
 import "dotenv/config";
 import path from "path";
 import type { PrismaConfig } from "prisma";
-import { env } from "prisma/config";
+import { findDirectDatabaseUrl } from "./src/utils/dbconfig";
 
 export default {
   schema: path.join('prisma'),
@@ -9,6 +9,6 @@ export default {
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: findDirectDatabaseUrl(),
   },
 } satisfies PrismaConfig;

@@ -16,6 +16,8 @@ model Seat {
     updatedAt DateTime @updatedAt @map("updated_at")
 
     @@unique([eventId, seatNumber])
+    @@index([eventId, seatStatus]) // Optimizes availability checks
+    @@index([lockedByBookingId, seatStatus]) // Optimizes lock releases
     @@index([eventId])
     @@index([seatStatus])
     @@index([lockedByBookingId])

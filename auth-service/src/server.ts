@@ -5,6 +5,7 @@ import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { TokenCleanupJob } from "./utils/cronjob";
 import { EmailAvailabilityService } from "./services/email.availability.service";
+import { closePrisma, connectPrisma } from "./utils/dbconfig";
 
 let kafkaService: KafkaService | null = null;
 
@@ -21,6 +22,9 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
 
   try {
+    // Close Database Connection
+    await closePrisma();
+
     if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
       await kafkaService.disconnect();
     }
@@ -54,6 +58,14 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 const startServer = async () => {
   try {
+    // Connect to Database
+    const databaseConnected = await connectPrisma();
+
+    if (!databaseConnected) {
+      console.error("❌ Failed to connect to database. Exiting...");
+      process.exit(1);
+    }
+
     const server = app.listen(envConfig.PORT, () => {
       logger.info(
         `Server is running on port ${envConfig.PORT} with service name "${envConfig.SERVICE_NAME}"`,

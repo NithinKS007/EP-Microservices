@@ -15,6 +15,7 @@ model Booking {
   bookingSeats BookingSeat[]
 
   @@index([userId])
+  @@index([eventId, status]) 
   @@index([eventId])
   @@index([status, expiresAt])
   @@map("booking")
