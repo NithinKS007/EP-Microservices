@@ -1,4 +1,4 @@
-import { container } from "container";
+import { container } from "./container";
 import { logger, RedisService } from "../../utils/src";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";

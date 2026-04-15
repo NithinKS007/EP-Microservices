@@ -57,4 +57,8 @@ export class RateLimiter {
   public apiGatewayLimiter(): RateLimitRequestHandler {
     return this.create(60 * 1000, 150);
   }
+
+  public authServiceLimiter(): RateLimitRequestHandler {
+    return this.create(60 * 1000, 10);
+  }
 }
