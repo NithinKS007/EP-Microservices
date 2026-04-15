@@ -1,6 +1,6 @@
 import { container } from "./container";
-import { logger, RedisService } from "../../utils/src";
-import { app } from "./app";
+import { logger, RateLimiter, RedisService } from "../../utils/src";
+import { createApp } from "./app";
 import { envConfig } from "./config/env.config";
 
 /**
@@ -44,6 +44,12 @@ const startServer = async () => {
   try {
     const redisService = container.resolve<RedisService>("redisService");
     await redisService.connect();
+
+    const rateLimiter = container.resolve<RateLimiter>("rateLimiter");
+    rateLimiter.addClient(redisService.returnRawClient());
+
+    const app = createApp(rateLimiter);
+    
     const server = app.listen(envConfig.PORT, () => {
       logger.info(
         `Server is running on port ${envConfig.PORT} with service name "${envConfig.SERVICE_NAME}"`,
