@@ -78,7 +78,6 @@ export class RedisService {
 
   async set(key: string, value: string, ttl?: number) {
     this.ensureConnected();
-
     try {
       if (ttl) {
         await this.client.setEx(key, ttl, value);
@@ -114,7 +113,6 @@ export class RedisService {
 
   async flushCache() {
     this.ensureConnected();
-
     try {
       await this.client.flushDb();
       logger.info(`🧹 Redis DB ${this.db}: Database flushed`);
@@ -125,7 +123,6 @@ export class RedisService {
 
   async setBit(key: string, offset: number, value: 0 | 1) {
     this.ensureConnected();
-
     try {
       await this.client.setBit(key, offset, value);
     } catch (err) {
@@ -136,7 +133,6 @@ export class RedisService {
 
   async getBit(key: string, offset: number): Promise<number> {
     this.ensureConnected();
-
     try {
       return await this.client.getBit(key, offset);
     } catch (err) {
@@ -155,8 +151,8 @@ export class RedisService {
     capacity: number,
     options: BloomReserveOptions = {},
   ): Promise<boolean> {
-    this.ensureConnected();
 
+    this.ensureConnected();
     const command = ["BF.RESERVE", key, errorRate.toString(), capacity.toString()];
 
     if (options.expansion !== undefined) {
@@ -181,17 +177,17 @@ export class RedisService {
 
   async bfAdd(key: string, item: string): Promise<boolean> {
     this.ensureConnected();
-
     const result = await this.client.sendCommand(["BF.ADD", key, item]);
-
     return this.parseBloomResult(result);
   }
 
   async bfExists(key: string, item: string): Promise<boolean> {
     this.ensureConnected();
-
     const result = await this.client.sendCommand(["BF.EXISTS", key, item]);
-
     return this.parseBloomResult(result);
+  }
+
+  returnRawClient(): RedisClientType {
+    return this.client;
   }
 }

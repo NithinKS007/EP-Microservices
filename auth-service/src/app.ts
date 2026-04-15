@@ -3,14 +3,19 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { Request, Response } from "express";
 import { router } from "./routes/auth.routes";
-import { notFoundMiddleware, errorMiddleware, RateLimiter } from "../../utils/src";
+import { notFoundMiddleware, errorMiddleware, RateLimiter, RedisService } from "../../utils/src";
 import { envConfig } from "./config/env.config";
+import { container } from "./container";
 
 const app = express();
 
+app.set("trust proxy", 1);
 app.use(helmet());
-const limit = new RateLimiter();
-app.use("/api", limit.apiGatewayLimiter());
+
+const redisService = container.resolve<RedisService>("redisService");
+const rateLimiter = container.resolve<RateLimiter>("rateLimiter");
+rateLimiter.addClient(redisService.returnRawClient());
+app.use("/api", rateLimiter.apiGatewayLimiter());
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 

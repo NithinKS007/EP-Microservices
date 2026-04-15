@@ -9,6 +9,7 @@ import {
   EmailService,
   CustomMiddleware,
   RedisService,
+  RateLimiter,
 } from "../../utils/src";
 import { envConfig } from "./config/env.config";
 import { UserServiceGrpcClient } from "./grpc/user.client";
@@ -30,8 +31,10 @@ const accessSecret = envConfig.JWT_ACCESS_TOKEN_SECRET;
 const refreshSecret = envConfig.JWT_REFRESH_TOKEN_SECRET;
 const accessExpiration = envConfig.JWT_ACCESS_TOKEN_EXPIRATION;
 const refreshExpiration = envConfig.JWT_REFRESH_TOKEN_EXPIRATION;
+
 const emailUser = envConfig.EMAIL_USER;
 const emailPass = envConfig.EMAIL_PASS;
+
 const redisHost = envConfig.REDIS_HOST;
 const redisPort = envConfig.REDIS_PORT;
 const redisPassword = envConfig.REDIS_PASSWORD;
@@ -77,13 +80,14 @@ container.register({
       emailPass,
     })),
   redisService: asClass(RedisService)
-    .scoped()
+    .singleton()
     .inject(() => ({
       host: redisHost,
       port: redisPort,
       password: redisPassword,
       db: redisDb,
     })),
+  rateLimiter: asClass(RateLimiter).singleton(),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });
 

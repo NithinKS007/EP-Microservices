@@ -1,4 +1,4 @@
-import { sendResponse, logger, RateLimiter, StatusCodes } from "../../utils/src";
+import { sendResponse, logger, RateLimiter, StatusCodes, RedisService } from "../../utils/src";
 import express, { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -7,6 +7,7 @@ import { proxyServices } from "./config/service.proxy";
 import { envConfig } from "./config/env.config";
 import { prismaErrorHandler } from "./prisma.error.handler";
 import { AppError } from "../../utils/src/error.handling.middleware";
+import { container } from "./container";
 
 const app = express();
 
@@ -18,8 +19,14 @@ app.use(
     credentials: true,
   }),
 );
-const limit = new RateLimiter();
-app.use(limit.apiGatewayLimiter());
+
+// Trust proxy is essential for identifying correct client IPs behind load balancers/proxies
+app.set("trust proxy", 1);
+
+const redisService = container.resolve<RedisService>("redisService");
+const rateLimiter = container.resolve<RateLimiter>("rateLimiter");
+rateLimiter.addClient(redisService.returnRawClient());
+app.use(rateLimiter.apiGatewayLimiter());
 app.use(morgan("dev"));
 
 /**
