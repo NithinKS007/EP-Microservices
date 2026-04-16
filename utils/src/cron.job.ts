@@ -13,8 +13,16 @@ export class CronRunner {
     redisService: RedisService;
     serviceName: string;
   }) {
+    if (!redisService) {
+      throw new Error("Redis service is required");
+    }
+
+    if (!serviceName) {
+      throw new Error("Service name is required");
+    }
+
     this.redisService = redisService;
-    this.serviceName = serviceName || "service";
+    this.serviceName = serviceName;
   }
 
   schedule(name: string, expression: string, task: () => Promise<void>) {
