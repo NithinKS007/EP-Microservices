@@ -71,7 +71,11 @@ container.register({
   refreshTokenRepository: asClass(RefreshTokenRepository).scoped(),
   passwordResetTokenRepository: asClass(PasswordResetTokenRepository).scoped(),
   tokenService: asClass(TokenService).scoped(),
-  cronRunner: asClass(CronRunner).scoped(),
+  cronRunner: asClass(CronRunner)
+    .scoped()
+    .inject(() => ({
+      serviceName: envConfig.SERVICE_NAME,
+    })),
   tokenCleanupJob: asClass(TokenCleanupJob).scoped(),
   emailService: asClass(EmailService)
     .scoped()

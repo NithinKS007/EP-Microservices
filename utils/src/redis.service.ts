@@ -89,6 +89,24 @@ export class RedisService {
     }
   }
 
+  /**
+   * Atomic SET if Not Exists with TTL.
+   * Useful for distributed locks.
+   */
+  async setNX(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    this.ensureConnected();
+    try {
+      const result = await this.client.set(key, value, {
+        NX: true,
+        EX: ttlSeconds,
+      });
+      return result === "OK";
+    } catch (err) {
+      logger.error(`SETNX failed key="${key}" ${err}`);
+      return false;
+    }
+  }
+
   async get(key: string) {
     this.ensureConnected();
 

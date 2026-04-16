@@ -8,8 +8,10 @@ import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startBookingGrpcServer } from "./grpc/start.server";
 import { OutboxWorker } from "./utils/outbox.worker";
 import { BookingExpiryJob } from "./utils/booking.expiry.job";
+import { RedisService } from "../../utils/src";
 
 let kafkaService: KafkaService | null = null;
+let redisService: RedisService | null = null;
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -17,6 +19,10 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   try {
     if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
       await kafkaService.disconnect();
+    }
+
+    if (redisService) {
+      await redisService.disconnect();
     }
 
     // Close database connection
@@ -58,8 +64,11 @@ const startServer = async () => {
     /** Connect producer and consumer */
 
     kafkaService = container.resolve<KafkaService>("kafkaService");
+    redisService = container.resolve<RedisService>("redisService");
     const outboxWorker = container.resolve<OutboxWorker>("outboxWorker");
     const bookingExpiryJob = container.resolve<BookingExpiryJob>("bookingExpiryJob");
+
+    await redisService.connect();
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();

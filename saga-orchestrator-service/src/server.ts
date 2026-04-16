@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { container } from "./container";
-import { KafkaService } from "../../utils/src/kafka.service";
+import { KafkaService, RedisService } from "../../utils/src";
 import { logger } from "../../utils/src/logger";
 import { app } from "./app";
 import { envConfig } from "./config/env.config";
@@ -10,15 +10,19 @@ import { OutboxWorker } from "./utils/outbox.worker";
 import { CancelEventSagaConsumer } from "./utils/cancel.event.saga.consumer";
 import { SagaRecoveryJob } from "./utils/saga.recovery.job";
 
-
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
-
     const kafkaService = container.resolve<KafkaService>("kafkaService");
+    const redisService = container.resolve<RedisService>("redisService");
+
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.disconnect();
+    }
+
+    if (redisService.isConnected()) {
+      await redisService.disconnect();
     }
 
     // Close database connection
@@ -62,7 +66,10 @@ const startServer = async () => {
     /** Connect producer and consumer */
 
     const kafkaService = container.resolve<KafkaService>("kafkaService");
+    const redisService = container.resolve<RedisService>("redisService");
     const outboxWorker = container.resolve<OutboxWorker>("outboxWorker");
+
+    await redisService.connect();
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.ensureTopics();
