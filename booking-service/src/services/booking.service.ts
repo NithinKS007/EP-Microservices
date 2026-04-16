@@ -258,9 +258,6 @@ export class BookingService {
     const eventMap = new Map(eventDetails.events?.map((e) => [e.id, e]) || []);
     const paymentMap = new Map(paymentDetails.payments?.map((p) => [p.bookingId, p]) || []);
 
-    logger.info(`Event details: ${JSON.stringify(eventDetails)}`);
-    logger.info(`Payment details: ${JSON.stringify(paymentDetails)}`);
-
     return bookings.data.map((booking) => {
       const event = eventMap.get(booking.eventId);
       const payment = paymentMap.get(booking.id);
