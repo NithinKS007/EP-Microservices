@@ -2,7 +2,6 @@ import "reflect-metadata";
 import { container } from "../container";
 import { asValue } from "awilix";
 import { BookingService } from "../services/booking.service";
-import { logger } from "../../../utils/src";
 
 async function runTest() {
   const eventId = "77777777-7777-7777-7777-777777777777";
