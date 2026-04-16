@@ -71,8 +71,8 @@ export const envConfig: Env = {
   REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
   REDIS_DB: Number(process.env.REDIS_DB) || 0,
   
-  AUTH_EMAIL_EXISTS_CACHE_PREFIX: process.env.AUTH_EMAIL_EXISTS_CACHE_PREFIX || "auth:email:exists",
-  AUTH_EMAIL_BLOOM_KEY: process.env.AUTH_EMAIL_BLOOM_KEY || "auth:email:bloom",
+  AUTH_EMAIL_EXISTS_CACHE_PREFIX: process.env.AUTH_EMAIL_EXISTS_CACHE_PREFIX || "ep:auth:email:exists",
+  AUTH_EMAIL_BLOOM_KEY: process.env.AUTH_EMAIL_BLOOM_KEY || "ep:auth:email:bloom",
   AUTH_EMAIL_BLOOM_ERROR_RATE: Number(process.env.AUTH_EMAIL_BLOOM_ERROR_RATE) || 0.001,
   AUTH_EMAIL_BLOOM_CAPACITY: Number(process.env.AUTH_EMAIL_BLOOM_CAPACITY) || 1_000_000,
   AUTH_EMAIL_BLOOM_EXPANSION: Number(process.env.AUTH_EMAIL_BLOOM_EXPANSION) || 2,

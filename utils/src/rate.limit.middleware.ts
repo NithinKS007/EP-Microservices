@@ -7,7 +7,6 @@ import { RedisStore } from "rate-limit-redis";
 import type { RedisClientType } from "redis";
 import { sendResponse } from "./http.response";
 import { StatusCodes } from "./http.status.codes";
-import { RedisService } from "./redis.service";
 
 /**
  * RateLimiter is a utility class that provides configurable
@@ -48,6 +47,7 @@ export class RateLimiter {
       options.store = new RedisStore({
         sendCommand: (...args: string[]) =>
           this.redisClient!.sendCommand(args),
+        prefix: "ep:rl:",
       });
     }
 

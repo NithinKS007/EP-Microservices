@@ -29,7 +29,7 @@ export class CronRunner {
     cron.schedule(expression, async () => {
       try {
         if (this.redisService && this.redisService.isConnected()) {
-          const lockKey = `${this.serviceName}:cron:lock:${name.toLowerCase().replace(/\s+/g, "_")}`;
+          const lockKey = `ep:${this.serviceName}:cron:lock:${name.toLowerCase().replace(/\s+/g, "_")}`;
           // Attempt to acquire lock for 55 seconds (standard for minutely jobs)
           const acquired = await this.redisService.setNX(lockKey, "locked", 55);
 
