@@ -170,6 +170,26 @@ export class BookingRepository
   }
 
   /**
+   * Acquires integer-based transaction-level advisory locks for the given seat IDs.
+   * Eliminates Time-Of-Check-To-Time-Of-Use (TOCTOU) concurrency race conditions natively in PostgreSQL.
+   */
+  async acquireAdvisoryLocks(seatIds: string[]): Promise<void> {
+    if (seatIds.length === 0) return;
+
+    // Sort to prevent deadlocks when concurrent transactions book overlapping sets of seats
+    const sortedIds = [...seatIds].sort();
+
+    for (const seatId of sortedIds) {
+      await this.prisma.$executeRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtext(${seatId} || '_1'),
+          hashtext(${seatId} || '_2')
+        )
+      `;
+    }
+  }
+
+  /**
    * Finds seats that are currently held by an active (non-terminal) booking.
    * Used in: Booking create flow to prevent double-booking seats.
    * Triggered via: REST

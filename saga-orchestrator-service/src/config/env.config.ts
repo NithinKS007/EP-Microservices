@@ -9,9 +9,7 @@ interface Env {
   KAFKA_GROUP_ID: string;
   KAFKA_ENABLED: string;
 
-  DATABASE_URL_DEV: string;
-  DATABASE_URL_PROD: string;
-  DB_DIRECT_URL: string;
+  DATABASE_URL: string;
   NODE_ENV: string;
 
   EVENT_SERVICE_URL_GRPC: string;
@@ -28,10 +26,8 @@ export const envConfig: Env = {
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || "saga-orchestrator-service-group",
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "true",
 
-  DATABASE_URL_DEV:
+  DATABASE_URL:
     process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_saga_orchestrator_service",
-  DATABASE_URL_PROD: process.env.DATABASE_URL_PROD || "postgresql://postgres:postgres@localhost:5432/ep_saga_orchestrator_service",
-  DB_DIRECT_URL: process.env.DB_DIRECT_URL || "postgresql://postgres:postgres@localhost:5432/ep_saga_orchestrator_service",
   NODE_ENV: process.env.NODE_ENV || "development",
 
   EVENT_SERVICE_URL_GRPC: "event:50052",

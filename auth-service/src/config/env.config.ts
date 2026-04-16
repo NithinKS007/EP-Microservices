@@ -20,9 +20,7 @@ interface Env {
 
   CLIENT_URL: string;
 
-  DATABASE_URL_DEV: string;
-  DATABASE_URL_PROD: string;
-  DB_DIRECT_URL: string;
+  DATABASE_URL: string;
 
   NODE_ENV: string;
 
@@ -61,10 +59,7 @@ export const envConfig: Env = {
 
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:4000",
 
-  DATABASE_URL_DEV:
-    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
-  DATABASE_URL_PROD: process.env.DATABASE_URL_PROD || "postgresql://postgres:postgres@localhost:5432/auth-service",
-  DB_DIRECT_URL: process.env.DB_DIRECT_URL || "postgresql://postgres:postgres@localhost:5432/auth-service",
+  DATABASE_URL: process.env.DATABASE_URL || "postgresql://postgres:12345@postgres:5432/ep_auth_service",
   
   NODE_ENV: process.env.NODE_ENV || "development",
 

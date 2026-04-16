@@ -69,15 +69,7 @@ export class BookingService {
       }
     }
 
-    // Application-level seat conflict check (replaces removed DB unique constraint)
     const seatIds = seats.map((s) => s.id);
-    const conflictingSeats = await this.bookingRepository.findActiveBookingsBySeatIds(seatIds);
-    if (conflictingSeats.length > 0) {
-      const conflictDetails = conflictingSeats
-        .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
-        .join(", ");
-      throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
-    }
 
     // Snapshot seat details from Event Service
     const eventDetails = await this.eventServiceGrpcClient.findEventsByIdsWithSeats({
@@ -89,6 +81,19 @@ export class BookingService {
     const seatMap = new Map(event.seats?.map((s) => [s.id, s]) || []);
 
     const booking = await this.unitOfWork.withTransaction(async (repos) => {
+      // 1. Acquire distributed transaction-level locks to prevent TOCTOU race conditions globally
+      await repos.bookingRepository.acquireAdvisoryLocks(seatIds);
+
+      // 2. Perform application-level seat conflict check INSIDE the locked critical section
+      const conflictingSeats = await repos.bookingRepository.findActiveBookingsBySeatIds(seatIds);
+      if (conflictingSeats.length > 0) {
+        const conflictDetails = conflictingSeats
+          .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
+          .join(", ");
+        throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
+      }
+
+      // 3. Persist the booking and its seats
       const createdBooking = await repos.bookingRepository.create({
         userId,
         eventId,

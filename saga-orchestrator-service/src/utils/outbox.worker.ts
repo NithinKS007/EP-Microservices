@@ -33,9 +33,8 @@ export class OutboxWorker {
       try {
         await this.processBatch();
       } catch (err) {
-        logger.error(`Saga outbox worker fatal error ${err}`);
+        logger.error(`Saga outbox worker fatal error: ${JSON.stringify(err)}`);
       }
-
       await this.sleep(this.POLL_INTERVAL);
     }
   }

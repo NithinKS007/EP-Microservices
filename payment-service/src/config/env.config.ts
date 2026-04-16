@@ -3,9 +3,8 @@ import "dotenv/config";
 interface Env {
   PORT: number;
   SERVICE_NAME: string;
-  DATABASE_URL_DEV: string;
-  DATABASE_URL_PROD: string;
-  DB_DIRECT_URL: string;
+
+  DATABASE_URL: string;
   NODE_ENV: string;
   KAFKA_BROKERS: string;
 
@@ -31,10 +30,7 @@ interface Env {
 export const envConfig: Env = {
   PORT: Number(process.env.PORT) || 3000,
   SERVICE_NAME: process.env.SERVICE_NAME || "payment-service",
-  DATABASE_URL_DEV:
-    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_payment_service",
-  DATABASE_URL_PROD: process.env.DATABASE_URL_PROD || "postgresql://postgres:postgres@localhost:5432/ep_payment_service",
-  DB_DIRECT_URL: process.env.DB_DIRECT_URL || "postgresql://postgres:postgres@localhost:5432/ep_payment_service",
+  DATABASE_URL: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_payment_service",
   NODE_ENV: process.env.NODE_ENV || "development",
 
   KAFKA_BROKERS: process.env.KAFKA_BROKERS || "localhost:9092",

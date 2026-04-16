@@ -2,59 +2,18 @@ import { PrismaClient } from "../generated/prisma/client";
 import { logger } from "../../../utils/src";
 import { envConfig } from "../config/env.config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import "dotenv/config";
 
 /**
- * Returns the runtime database URL and pool configuration based on NODE_ENV.
- * development -> DATABASE_URL_DEV
- * production  -> DATABASE_URL_PROD
+ * Create a PrismaClient instance with logging enabled.
+ * - 'query': logs all executed queries
+ * - 'info': logs informational messages
+ * - 'warn': logs warnings
+ * - 'error': logs errors
+ *
+ * The errorFormat 'pretty' formats error messages for readability.
  */
-export function findDatabaseUrl() {
-  const isProduction = envConfig.NODE_ENV === "production";
 
-  const url = isProduction
-    ? envConfig.DATABASE_URL_PROD.trim()
-    : envConfig.DATABASE_URL_DEV.trim();
-
-  if (!url) {
-    throw new Error(
-      isProduction
-        ? "DATABASE_URL_PROD is not configured"
-        : "DATABASE_URL_DEV is not configured"
-    );
-  }
-
-  const poolConfig = isProduction
-    ? {
-        max: 2,
-        connectionTimeoutMillis: 5000,
-        idleTimeoutMillis: 30000,
-        maxLifetimeSeconds: 3600,
-      }
-    : {
-        max: 5,
-      };
-
-  return {
-    url,
-    poolConfig,
-  };
-}
-
-/**
- * Returns the direct DB URL for Prisma CLI (migrations, studio, db push).
- * Strictly requires DB_DIRECT_URL from envConfig.
- */
-export function findDirectDatabaseUrl(): string {
-  const directUrl = envConfig.DB_DIRECT_URL?.trim();
-  if (directUrl) return directUrl;
-  throw new Error("No database connection string (DB_DIRECT_URL) found in environment.");
-}
-
-const adapter = new PrismaPg({
-  connectionString: findDatabaseUrl().url,
-  ...findDatabaseUrl().poolConfig,
-});
+const adapter = new PrismaPg({ connectionString: envConfig.DATABASE_URL });
 
 export const prisma = new PrismaClient({
   adapter,
@@ -84,11 +43,17 @@ export const prisma = new PrismaClient({
 
 /**
  * Get database connection info (sanitized for logging)
+ * Hides password but shows host, port, and database name
  */
 export const getDatabaseInfo = (): string => {
-  const dbUrl = findDatabaseUrl().url;
+  const dbUrl = envConfig.DATABASE_URL || "Not configured";
+
+  if (dbUrl === "Not configured") {
+    return dbUrl;
+  }
 
   try {
+    // Parse the DATABASE_URL to extract connection details
     const url = new URL(dbUrl);
     const host = url.hostname;
     const port = url.port || "5432";
@@ -103,6 +68,9 @@ export const getDatabaseInfo = (): string => {
 
 /**
  * Connect to the database using Prisma.
+ * Logs success or failure using the Logger utility.
+ *
+ * Returns True if connection succeeds, false otherwise
  */
 export const connectPrisma = async (): Promise<boolean> => {
   try {
@@ -118,6 +86,7 @@ export const connectPrisma = async (): Promise<boolean> => {
 
 /**
  * Disconnect Prisma from the database.
+ * Logs success or any error that occurs during disconnection.
  */
 export const closePrisma = async (): Promise<void> => {
   try {

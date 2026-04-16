@@ -4,9 +4,7 @@ interface Env {
   PORT: number;
   SERVICE_NAME: string;
 
-  DATABASE_URL_DEV: string;
-  DATABASE_URL_PROD: string;
-  DB_DIRECT_URL: string;
+  DATABASE_URL: string;
   NODE_ENV: string;
   BOOKING_SERVICE_URL_GRPC: string;
   PAYMENT_SERVICE_URL_GRPC: string;
@@ -25,10 +23,7 @@ export const envConfig: Env = {
   PORT: Number(process.env.PORT) || 3000,
   SERVICE_NAME: process.env.SERVICE_NAME || "event-service",
 
-  DATABASE_URL_DEV:
-    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_event_service",
-  DATABASE_URL_PROD: process.env.DATABASE_URL_PROD || "postgresql://postgres:postgres@localhost:5432/ep_event_service",
-  DB_DIRECT_URL: process.env.DB_DIRECT_URL || "postgresql://postgres:postgres@localhost:5432/ep_event_service",
+  DATABASE_URL: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_event_service",
   NODE_ENV: process.env.NODE_ENV || "development",
   BOOKING_SERVICE_URL_GRPC: process.env.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   PAYMENT_SERVICE_URL_GRPC: process.env.PAYMENT_SERVICE_URL_GRPC || "payment:50054",
