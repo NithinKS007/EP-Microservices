@@ -17,7 +17,7 @@ const adapter = new PrismaPg({ connectionString: envConfig.DATABASE_URL });
 
 export const prisma = new PrismaClient({
   adapter,
-  log: ["query", "info", "warn", "error"],
+  log: ["info", "warn", "error"],
   errorFormat: "pretty",
 }).$extends({
   query: {
