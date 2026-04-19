@@ -320,9 +320,6 @@ export class BookingService {
       }),
     ]);
 
-    logger.info(`Event details: ${JSON.stringify(eventDetails)}`);
-    logger.info(`Payment details: ${JSON.stringify(paymentDetails)}`);
-
     const eventMap = new Map((eventDetails.events ?? []).map((e) => [e.id, e]));
 
     const paymentMap = new Map((paymentDetails.payments ?? []).map((p) => [p.bookingId, p]));
