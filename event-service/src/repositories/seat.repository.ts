@@ -11,8 +11,7 @@ type TWhere = Prisma.SeatWhereInput;
 
 export class SeatRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
-  implements ISeatRepository
-{
+  implements ISeatRepository {
   private prisma: PrismaClient | Prisma.TransactionClient;
 
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
@@ -157,7 +156,7 @@ export class SeatRepository
           in: bookingIds,
         },
         seatStatus: {
-          in: ["LOCKED", "SOLD"],
+          in: ["LOCKED", "SOLD", "AVAILABLE"],
         },
       },
       data: {

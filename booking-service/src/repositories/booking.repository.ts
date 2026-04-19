@@ -11,8 +11,7 @@ type TWhere = Prisma.BookingWhereInput;
 
 export class BookingRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
-  implements IBookingRepository
-{
+  implements IBookingRepository {
   private readonly prisma: PrismaClient | Prisma.TransactionClient;
 
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
@@ -78,7 +77,7 @@ export class BookingRepository
   async findExpiredPendingBookings(limit = 100): Promise<TModel[]> {
     return await this.prisma.booking.findMany({
       where: {
-        expiresAt: { lt: new Date() },
+        expiresAt: { lte: new Date() },
         status: {
           in: ["PENDING", "PAYMENT_INITIATED"],
         },
