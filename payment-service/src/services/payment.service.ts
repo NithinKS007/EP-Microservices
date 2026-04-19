@@ -11,6 +11,7 @@ import {
   codeGenerator,
   createCircuitBreaker,
   EmailService,
+  getCircuitBreakerPolicy,
   logger,
 } from "../../../utils/src/index";
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment.dtos";
@@ -37,9 +38,12 @@ export class PaymentService {
     Orders.RazorpayOrder
   >({
     name: "payment.razorpay.create_order",
-    timeoutMs: 7000,
-    resetTimeoutMs: 20000,
-    volumeThreshold: 3,
+    ...getCircuitBreakerPolicy("externalWrite", {
+      timeoutMs: 7000,
+      resetTimeoutMs: 20000,
+      volumeThreshold: 3,
+      capacity: 25,
+    }),
     action: (amount) => this.executeCreateRazorpayOrder(amount),
   });
 
@@ -48,9 +52,12 @@ export class PaymentService {
     Refunds.RazorpayRefund
   >({
     name: "payment.razorpay.refund",
-    timeoutMs: 7000,
-    resetTimeoutMs: 20000,
-    volumeThreshold: 3,
+    ...getCircuitBreakerPolicy("externalWrite", {
+      timeoutMs: 7000,
+      resetTimeoutMs: 20000,
+      volumeThreshold: 3,
+      capacity: 15,
+    }),
     action: (paymentId, amount) => this.executeRefundRazorpayPayment(paymentId, amount),
   });
 

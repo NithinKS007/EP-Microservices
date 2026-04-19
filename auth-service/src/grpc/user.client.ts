@@ -1,7 +1,8 @@
 import { envConfig } from "../config/env.config";
 import {
+  createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
+  executeUnaryGrpcCall,
   FindUserByEmailRequest,
   FindUserByEmailResponse,
   UpdateUserPasswordRequest,
@@ -13,52 +14,100 @@ import {
 import { UserServiceClient, CreateUserRequest, CreateUserResponse } from "../../../utils/src";
 import { UserEntity } from "./../entity/user.entity";
 
+type FindUserByEmailResult = Omit<FindUserByEmailResponse, "user"> & {
+  user?: UserEntity;
+};
+
 export class UserServiceGrpcClient {
+  private readonly GRPC_TIMEOUT_MS = 4000;
   private client = createGrpcClient(
     UserServiceClient,
     envConfig.USER_SERVICE_URL_GRPC || "user:50051",
   );
+  private readonly createUserBreaker = createCircuitBreaker<[CreateUserRequest], CreateUserResponse>(
+    {
+      name: "auth.user.create",
+      timeoutMs: 5000,
+      action: (data) => this.executeCreateUser(data),
+    },
+  );
+  private readonly findUserByEmailBreaker = createCircuitBreaker<
+    [FindUserByEmailRequest],
+    FindUserByEmailResult
+  >({
+    name: "auth.user.find_by_email",
+    timeoutMs: 5000,
+    action: (data) => this.executeFindUserByEmail(data),
+  });
+  private readonly updateUserPasswordBreaker = createCircuitBreaker<
+    [UpdateUserPasswordRequest],
+    UpdateUserPasswordResponse
+  >({
+    name: "auth.user.update_password",
+    timeoutMs: 5000,
+    action: (data) => this.executeUpdateUserPassword(data),
+  });
+  private readonly findUserByIdBreaker = createCircuitBreaker<
+    [FindUserByIdRequest],
+    FindUserByIdResponse
+  >({
+    name: "auth.user.find_by_id",
+    timeoutMs: 5000,
+    action: (data) => this.executeFindUserById(data),
+  });
 
   createUser(data: CreateUserRequest): Promise<CreateUserResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.createUser(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.createUserBreaker.fire(data);
   }
 
-  findUserByEmail(data: FindUserByEmailRequest): Promise<
-    Omit<FindUserByEmailResponse, "user"> & {
-      user?: UserEntity;
-    }
-  > {
-    return new Promise((resolve, reject) => {
-      this.client.findUserByEmail(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve({
-          ...res,
-          user: res?.user ? { ...res.user, role: this.mapRole(res.user.role) } : undefined,
-        });
-      });
-    });
+  findUserByEmail(data: FindUserByEmailRequest): Promise<FindUserByEmailResult> {
+    return this.findUserByEmailBreaker.fire(data);
   }
 
   updateUserPassword(data: UpdateUserPasswordRequest): Promise<UpdateUserPasswordResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.updateUserPassword(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.updateUserPasswordBreaker.fire(data);
   }
 
   findUserById(data: FindUserByIdRequest): Promise<FindUserByIdResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findUserById(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
+    return this.findUserByIdBreaker.fire(data);
+  }
+
+  private executeCreateUser(data: CreateUserRequest): Promise<CreateUserResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.createUser(data, metadata, options, callback),
+    });
+  }
+
+  private executeFindUserByEmail(data: FindUserByEmailRequest): Promise<FindUserByEmailResult> {
+    return executeUnaryGrpcCall<FindUserByEmailResponse>({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findUserByEmail(data, metadata, options, callback),
+    }).then((response) => ({
+      ...response,
+      user: response?.user
+        ? { ...response.user, role: this.mapRole(response.user.role) }
+        : undefined,
+    }));
+  }
+
+  private executeUpdateUserPassword(
+    data: UpdateUserPasswordRequest,
+  ): Promise<UpdateUserPasswordResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.updateUserPassword(data, metadata, options, callback),
+    });
+  }
+
+  private executeFindUserById(data: FindUserByIdRequest): Promise<FindUserByIdResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findUserById(data, metadata, options, callback),
     });
   }
 

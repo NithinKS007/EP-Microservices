@@ -81,6 +81,7 @@ class ServiceProxy {
       target: service.url,
       changeOrigin: true,
       timeout: envConfig.DEFAULT_TIMEOUT,
+      proxyTimeout: envConfig.DEFAULT_TIMEOUT,
       logger,
       pathRewrite: {
         [`^${service.path}`]: "",

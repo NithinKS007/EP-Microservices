@@ -2,8 +2,7 @@ import { envConfig } from "../config/env.config";
 import {
   createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
-  Metadata,
+  executeUnaryGrpcCall,
 } from "../../../utils/src";
 import {
   BulkCancelBookingsRequest,
@@ -33,6 +32,19 @@ export class BookingServiceGrpcClient {
     timeoutMs: 5000,
     action: (data) => this.executeFindBookingsByEvent(data),
   });
+  private readonly findBookingBreaker = createCircuitBreaker<[FindBookingRequest], FindBookingResponse>({
+    name: "saga.booking.find_booking",
+    timeoutMs: 5000,
+    action: (data) => this.executeFindBooking(data),
+  });
+  private readonly updateBookingStatusBreaker = createCircuitBreaker<
+    [UpdateBookingStatusRequest],
+    UpdateBookingStatusResponse
+  >({
+    name: "saga.booking.update_status",
+    timeoutMs: 5000,
+    action: (data) => this.executeUpdateBookingStatus(data),
+  });
   private readonly bulkCancelBookingsBreaker = createCircuitBreaker<
     [BulkCancelBookingsRequest],
     BulkCancelBookingsResponse
@@ -41,14 +53,17 @@ export class BookingServiceGrpcClient {
     timeoutMs: 5000,
     action: (data) => this.executeBulkCancelBookings(data),
   });
+  private readonly updateBookingAmountBreaker = createCircuitBreaker<
+    [UpdateBookingAmountRequest],
+    UpdateBookingAmountResponse
+  >({
+    name: "saga.booking.update_amount",
+    timeoutMs: 5000,
+    action: (data) => this.executeUpdateBookingAmount(data),
+  });
 
   findBooking(data: FindBookingRequest): Promise<FindBookingResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findBooking(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.findBookingBreaker.fire(data);
   }
 
   findBookingsByEvent(data: FindBookingsByEventRequest): Promise<FindBookingsByEventResponse> {
@@ -58,26 +73,15 @@ export class BookingServiceGrpcClient {
   private executeFindBookingsByEvent(
     data: FindBookingsByEventRequest,
   ): Promise<FindBookingsByEventResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findBookingsByEvent(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findBookingsByEvent(data, metadata, options, callback),
     });
   }
 
   updateBookingStatus(data: UpdateBookingStatusRequest): Promise<UpdateBookingStatusResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.updateBookingStatus(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.updateBookingStatusBreaker.fire(data);
   }
 
   bulkCancelBookings(data: BulkCancelBookingsRequest): Promise<BulkCancelBookingsResponse> {
@@ -87,25 +91,42 @@ export class BookingServiceGrpcClient {
   private executeBulkCancelBookings(
     data: BulkCancelBookingsRequest,
   ): Promise<BulkCancelBookingsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.bulkCancelBookings(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.bulkCancelBookings(data, metadata, options, callback),
     });
   }
 
   updateBookingAmount(data: UpdateBookingAmountRequest): Promise<UpdateBookingAmountResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.updateBookingAmount(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
+    return this.updateBookingAmountBreaker.fire(data);
+  }
+
+  private executeFindBooking(data: FindBookingRequest): Promise<FindBookingResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findBooking(data, metadata, options, callback),
+    });
+  }
+
+  private executeUpdateBookingStatus(
+    data: UpdateBookingStatusRequest,
+  ): Promise<UpdateBookingStatusResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.updateBookingStatus(data, metadata, options, callback),
+    });
+  }
+
+  private executeUpdateBookingAmount(
+    data: UpdateBookingAmountRequest,
+  ): Promise<UpdateBookingAmountResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.updateBookingAmount(data, metadata, options, callback),
     });
   }
 }

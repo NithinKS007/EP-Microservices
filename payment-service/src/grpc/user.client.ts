@@ -2,8 +2,7 @@ import { envConfig } from "../config/env.config";
 import {
   createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
-  Metadata,
+  executeUnaryGrpcCall,
 } from "../../../utils/src";
 import { UserServiceClient, FindUserByIdRequest, FindUserByIdResponse } from "../../../utils/src";
 
@@ -38,16 +37,10 @@ export class UserServiceGrpcClient {
    * Triggered via: gRPC
    */
   private executeFindUserById(data: FindUserByIdRequest): Promise<FindUserByIdResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findUserById(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findUserById(data, metadata, options, callback),
     });
   }
 }

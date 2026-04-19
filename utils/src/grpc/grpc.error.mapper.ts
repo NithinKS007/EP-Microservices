@@ -4,6 +4,8 @@ import {
   DatabaseError,
   ForbiddenError,
   NotFoundError,
+  ServiceUnavailableError,
+  TimeoutError,
   UnauthorizedError,
   ValidationError,
 } from "./../../src/error.handling.middleware";
@@ -25,6 +27,8 @@ export const toGrpcError = (err: Error): grpc.ServiceError => {
   if (err instanceof NotFoundError) grpcErr.code = grpc.status.NOT_FOUND;
   if (err instanceof ForbiddenError) grpcErr.code = grpc.status.PERMISSION_DENIED;
   if (err instanceof UnauthorizedError) grpcErr.code = grpc.status.UNAUTHENTICATED;
+  if (err instanceof TimeoutError) grpcErr.code = grpc.status.DEADLINE_EXCEEDED;
+  if (err instanceof ServiceUnavailableError) grpcErr.code = grpc.status.UNAVAILABLE;
   if (err instanceof DatabaseError) grpcErr.code = grpc.status.INTERNAL;
 
   return grpcErr;
@@ -44,6 +48,10 @@ export const fromGrpcError = (err: grpc.ServiceError): Error => {
       return new ForbiddenError(cleanMessage);
     case grpc.status.UNAUTHENTICATED:
       return new UnauthorizedError(cleanMessage);
+    case grpc.status.DEADLINE_EXCEEDED:
+      return new TimeoutError(cleanMessage || "Upstream request timed out");
+    case grpc.status.UNAVAILABLE:
+      return new ServiceUnavailableError(cleanMessage || "Upstream service is unavailable");
     case grpc.status.INTERNAL:
     case grpc.status.UNKNOWN:
       return new DatabaseError(cleanMessage);

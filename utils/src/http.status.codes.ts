@@ -10,4 +10,5 @@ export enum StatusCodes {
   RateLimit = 429,
   Conflict = 409,
   SERVICE_UNAVAILABLE = 503,
+  GatewayTimeout = 504,
 }

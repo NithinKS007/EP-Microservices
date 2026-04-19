@@ -2,8 +2,7 @@ import { envConfig } from "../config/env.config";
 import {
   createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
-  Metadata,
+  executeUnaryGrpcCall,
 } from "../../../utils/src";
 import {
   BookingServiceClient,
@@ -35,16 +34,10 @@ export class BookingServiceGrpcClient {
    * Triggered via: gRPC
    */
   findBooking(data: FindBookingRequest): Promise<FindBookingResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findBooking(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findBooking(data, metadata, options, callback),
     });
   }
 
@@ -60,16 +53,10 @@ export class BookingServiceGrpcClient {
   private executeUpdateBookingStatus(
     data: UpdateBookingStatusRequest,
   ): Promise<UpdateBookingStatusResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.updateBookingStatus(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.updateBookingStatus(data, metadata, options, callback),
     });
   }
 }
