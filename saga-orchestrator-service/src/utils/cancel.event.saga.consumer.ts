@@ -103,8 +103,25 @@ export class CancelEventSagaConsumer {
         },
       });
 
-      const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({ eventId });
-      const bookingIds = bookingsResponse.bookings.map((booking) => booking.id);
+      const state = {
+        page: 1,
+        hasMore: true,
+        limit: 500
+      }
+      const bookingIds: string[] = [];
+
+      while (state.hasMore) {
+        const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({ eventId, page: state.page, limit: state.limit });
+        const batch = bookingsResponse.bookings || [];
+
+        if (batch.length === 0) {
+          state.hasMore = false;
+          break;
+        }
+
+        bookingIds.push(...batch.map((booking) => booking.id));
+        state.page++;
+      }
 
       if (bookingIds.length === 0) {
         await this.markStepSkipped({ sagaId, step: paymentStep });

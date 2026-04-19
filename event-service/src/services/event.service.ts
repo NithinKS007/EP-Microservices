@@ -130,33 +130,63 @@ export class EventService {
       );
     }
 
-    const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({
-      eventId: id,
-    });
-    const bookings = bookingsResponse.bookings;
-    const hasActiveBookings = bookings.some(
-      (booking) =>
-        booking.status !== BookingStatus.BOOKING_STATUS_CANCELLED &&
-        booking.status !== BookingStatus.BOOKING_STATUS_EXPIRED,
-    );
+    const state = {
+      page: 1,
+      limit: 500,
+      hasMore: true,
+      hasActiveBookings: false,
+      hasUnsettledPayments: false,
+    };
 
-    if (hasActiveBookings) {
-      throw new ConflictError("Event with active bookings cannot be deleted");
-    }
-
-    if (bookings.length > 0) {
-      const paymentsResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
-        bookingIds: bookings.map((booking) => booking.id),
+    while (state.hasMore) {
+      const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({
+        eventId: id,
+        page: state.page,
+        limit: state.limit,
       });
-      const hasUnsettledPayments = (paymentsResponse.payments || []).some(
+      const batch = bookingsResponse.bookings || [];
+
+      if (batch.length === 0) {
+        state.hasMore = false;
+        break;
+      }
+
+      const activeInBatch = batch.some(
+        (booking) =>
+          booking.status !== BookingStatus.BOOKING_STATUS_CANCELLED &&
+          booking.status !== BookingStatus.BOOKING_STATUS_EXPIRED,
+      );
+
+      if (activeInBatch) {
+        state.hasActiveBookings = true;
+        break;
+      }
+
+      // We only lookup payments if we need to verify them, mapping IDs of the batch.
+      const paymentBatchResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
+        bookingIds: batch.map((booking) => booking.id),
+      });
+
+      const unsettledInBatch = (paymentBatchResponse.payments || []).some(
         (payment) =>
           payment.status !== PaymentStatus.PAYMENT_STATUS_FAILED &&
           payment.status !== PaymentStatus.PAYMENT_STATUS_REFUNDED,
       );
 
-      if (hasUnsettledPayments) {
-        throw new ConflictError("Event with unsettled payments cannot be deleted");
+      if (unsettledInBatch) {
+        state.hasUnsettledPayments = true;
+        break;
       }
+
+      state.page++;
+    }
+
+    if (state.hasActiveBookings) {
+      throw new ConflictError("Event with active bookings cannot be deleted");
+    }
+
+    if (state.hasUnsettledPayments) {
+      throw new ConflictError("Event with unsettled payments cannot be deleted");
     }
     return await this.eventRepository.delete({ id });
   }

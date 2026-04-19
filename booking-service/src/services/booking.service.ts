@@ -200,9 +200,9 @@ export class BookingService {
    * Used in: Cancel Event Saga
    * Triggered via: gRPC
    */
-  async findBookingsByEvent(eventId: string) {
+  async findBookingsByEvent(eventId: string, page?: number, limit?: number) {
     if (!eventId) throw new ValidationError("Missing required fields");
-    const bookings = await this.bookingRepository.findBookingsByEventId(eventId);
+    const bookings = await this.bookingRepository.findBookingsByEventId(eventId, page, limit);
     return bookings.map((booking) => ({
       ...booking,
       totalAmount: Number(booking.totalAmount),
@@ -385,7 +385,7 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if ( ["CANCELLED","EXPIRED"].includes(booking.status)) {
+    if (["CANCELLED", "EXPIRED"].includes(booking.status)) {
       throw new ConflictError("Booking is already cancelled or expired,Please try again later");
     }
 
@@ -427,7 +427,7 @@ export class BookingService {
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
 
     // Fail any INITIATED payment when cancelling a non-confirmed booking
-    if (["PENDING","PAYMENT_INITIATED"].includes(booking.status) ) {
+    if (["PENDING", "PAYMENT_INITIATED"].includes(booking.status)) {
       await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
     }
 
@@ -448,7 +448,7 @@ export class BookingService {
       return await this.findBookingByIdWithDetails(id);
     }
 
-    if (["CANCELLED","CONFIRMED"].includes(booking.status)) {
+    if (["CANCELLED", "CONFIRMED"].includes(booking.status)) {
       throw new ConflictError("Only open bookings can be expired, Please try again later");
     }
 

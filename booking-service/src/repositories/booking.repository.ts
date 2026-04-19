@@ -36,10 +36,12 @@ export class BookingRepository
    * Used in: Cancel Event Saga
    * Triggered via: gRPC
    */
-  async findBookingsByEventId(eventId: string): Promise<TModel[]> {
+  async findBookingsByEventId(eventId: string, page: number = 1, limit: number = 500): Promise<TModel[]> {
     return await this.prisma.booking.findMany({
       where: { eventId },
       orderBy: { createdAt: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 

@@ -47,9 +47,9 @@ export class BookingGrpcController {
     call: ServerUnaryCall<FindBookingsByEventRequest, FindBookingsByEventResponse>,
     callback: SendUnaryData<FindBookingsByEventResponse>,
   ): void {
-    const { eventId } = call.request;
+    const { eventId, page, limit } = call.request;
     this.bookingService
-      .findBookingsByEvent(eventId)
+      .findBookingsByEvent(eventId, page, limit)
       .then((bookings) =>
         callback(null, {
           success: true,
