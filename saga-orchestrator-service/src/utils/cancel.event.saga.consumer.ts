@@ -174,9 +174,8 @@ export class CancelEventSagaConsumer {
       });
     } catch (err: unknown) {
       const error = this.normalizeError(err);
-      logger.error(`Cancel event saga failed permanently sagaId=${sagaId}`);
+      logger.error(`Cancel event saga failed permanently sagaId=${sagaId}. Attempting DLQ...`);
       await this.sendToDLQ(message, error);
-      return;
     }
   }
 
@@ -320,6 +319,7 @@ export class CancelEventSagaConsumer {
     } catch (dlqError: unknown) {
       const error = this.normalizeError(dlqError);
       logger.error(`Failed to send cancel event saga to DLQ ${error.message}`);
+      throw error; // Re-throw to trigger Kafka retry
     }
   }
 

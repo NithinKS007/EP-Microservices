@@ -103,7 +103,6 @@ export class PaymentEventConsumer {
         if (attempt >= this.MAX_RETRIES) {
           logger.error(`Max retries reached for event ${eventId}. Sending to DLQ.`);
           await this.sendToDLQ(message, error, config.dlqTopic);
-          return;
         }
         const delay = Math.pow(2, attempt) * this.BASE_DELAY;
         logger.warn(`Retrying message eventId=${eventId} attempt=${attempt} delay=${delay}ms`);
@@ -188,6 +187,7 @@ export class PaymentEventConsumer {
       logger.error(
         `CRITICAL: Failed to send to DLQ eventId=${message.eventId} error=${error.message}`,
       );
+      throw error; // Re-throw to trigger Kafka retry
     }
   }
 
