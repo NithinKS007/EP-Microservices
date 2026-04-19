@@ -510,19 +510,6 @@ export class BookingService {
     }
   }
 
-  private mapSeatStatus(status: number | undefined): string {
-    switch (status) {
-      case SeatStatus.SEAT_STATUS_AVAILABLE:
-        return "AVAILABLE";
-      case SeatStatus.SEAT_STATUS_LOCKED:
-        return "LOCKED";
-      case SeatStatus.SEAT_STATUS_SOLD:
-        return "SOLD";
-      default:
-        return "UNSPECIFIED";
-    }
-  }
-
   private mapPaymentStatus(status: number | undefined): string {
     switch (status) {
       case PaymentStatus.PAYMENT_STATUS_INITIATED:
