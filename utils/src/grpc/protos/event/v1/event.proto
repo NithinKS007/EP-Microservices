@@ -64,6 +64,8 @@ enum SeatTier {
 
 message FindEventsByIdsWithSeatsRequest {
   repeated string event_ids = 1;
+  optional int32 seat_page = 2;
+  optional int32 seat_limit = 3;
 }
 
 message FindEventsByIdsWithSeatsResponse {

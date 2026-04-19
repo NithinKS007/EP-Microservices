@@ -43,10 +43,17 @@ export interface IEventRepository extends DatabaseAdapter<
     page: number;
   }): Promise<{ data: EventModel[]; meta: { total: number; page: number; limit: number } }>;
 
-  findEventsByIdsWithSeats(eventIds: string[]): Promise<
+  findEventsByIdsWithSeats(
+    eventIds: string[],
+    page?: number,
+    limit?: number,
+  ): Promise<
     Prisma.EventGetPayload<{
       include: {
-        seats: true;
+        seats: {
+          take?: number;
+          skip?: number;
+        };
       };
     }>[]
   >;

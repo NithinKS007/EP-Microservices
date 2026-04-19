@@ -253,11 +253,11 @@ export class EventService {
    * Used in: Booking detail enrichment flow
    * Triggered via: gRPC
    */
-  async findEventsByIdsWithSeats(eventIds: string[]) {
+  async findEventsByIdsWithSeats(eventIds: string[], page?: number, limit?: number) {
     if (!eventIds.length) {
       return [];
     }
 
-    return await this.eventRepository.findEventsByIdsWithSeats(eventIds);
+    return await this.eventRepository.findEventsByIdsWithSeats(eventIds, page, limit);
   }
 }

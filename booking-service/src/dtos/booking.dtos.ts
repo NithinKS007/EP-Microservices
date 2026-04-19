@@ -58,6 +58,19 @@ export class GetBookingsQueryDto {
   @IsOptional()
   @IsUUID("4", { message: "User ID must be a valid UUID" })
   userId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  seatPage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  seatLimit?: number;
 }
 
 export class GetBookingByIdRequestDto {
@@ -65,6 +78,19 @@ export class GetBookingByIdRequestDto {
   @Type(() => String)
   @IsUUID("4", { message: "Booking ID must be a valid UUID" })
   id!: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  seatPage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  seatLimit?: number;
 }
 
 export class BookingActionRequestDto {
