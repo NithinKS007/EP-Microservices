@@ -88,7 +88,7 @@ export class BookingService {
       const conflictingSeats = await repos.bookingRepository.findActiveBookingsBySeatIds(seatIds);
       if (conflictingSeats.length > 0) {
         const conflictDetails = conflictingSeats
-          .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
+          .map((c) => `seatId ${c.seatId} (bookingId ${c.bookingId}, booking status ${c.status})`)
           .join(", ");
         throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
       }
