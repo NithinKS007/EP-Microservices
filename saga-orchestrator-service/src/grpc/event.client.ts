@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
@@ -29,7 +30,7 @@ export class EventServiceGrpcClient {
     BulkReleaseSeatsResponse
   >({
     name: "saga.event.bulk_release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkReleaseSeats(data),
   });
   private readonly markEventCancelledBreaker = createCircuitBreaker<
@@ -37,12 +38,12 @@ export class EventServiceGrpcClient {
     MarkEventCancelledResponse
   >({
     name: "saga.event.mark_cancelled",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeMarkEventCancelled(data),
   });
   private readonly lockSeatsBreaker = createCircuitBreaker<[LockSeatsRequest], LockSeatsResponse>({
     name: "saga.event.lock_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeLockSeats(data),
   });
   private readonly confirmSeatsBreaker = createCircuitBreaker<
@@ -50,7 +51,7 @@ export class EventServiceGrpcClient {
     ConfirmSeatsResponse
   >({
     name: "saga.event.confirm_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeConfirmSeats(data),
   });
   private readonly releaseSeatsBreaker = createCircuitBreaker<
@@ -58,7 +59,7 @@ export class EventServiceGrpcClient {
     ReleaseSeatsResponse
   >({
     name: "saga.event.release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeReleaseSeats(data),
   });
 

@@ -11,7 +11,7 @@ import {
   codeGenerator,
   createCircuitBreaker,
   EmailService,
-  getCircuitBreakerPolicy,
+  findCircuitBreakerPolicy,
   logger,
 } from "../../../utils/src/index";
 import { CreatePaymentDto, WEBHOOK_EVENT_TYPE } from "../dtos/payment.dtos";
@@ -38,7 +38,7 @@ export class PaymentService {
     Orders.RazorpayOrder
   >({
     name: "payment.razorpay.create_order",
-    ...getCircuitBreakerPolicy("externalWrite", {
+    ...findCircuitBreakerPolicy("externalWrite", {
       timeoutMs: 7000,
       resetTimeoutMs: 20000,
       volumeThreshold: 3,
@@ -48,17 +48,17 @@ export class PaymentService {
   });
 
   private readonly refundRazorpayPaymentBreaker = createCircuitBreaker<
-    [string, number],
+    [string, number, string],
     Refunds.RazorpayRefund
   >({
     name: "payment.razorpay.refund",
-    ...getCircuitBreakerPolicy("externalWrite", {
+    ...findCircuitBreakerPolicy("externalWrite", {
       timeoutMs: 7000,
       resetTimeoutMs: 20000,
       volumeThreshold: 3,
       capacity: 15,
     }),
-    action: (paymentId, amount) => this.executeRefundRazorpayPayment(paymentId, amount),
+    action: (providerPaymentId, amount, paymentId) => this.executeRefundRazorpayPayment(providerPaymentId, amount, paymentId),
   });
 
   constructor({
@@ -154,14 +154,20 @@ export class PaymentService {
       );
 
       // 1. Mark as SUCCESS first to record that we actually received the money
-      await this.paymentRepository.update({ id: existing.id }, { status: "SUCCESS" });
+      await this.paymentRepository.update(
+        { id: existing.id },
+        { status: "SUCCESS", providerPaymentId: payload.id },
+      );
 
       // 2. Trigger the refund flow (bypass actor check since it's internal)
       return await this.refundPayment(existing.id, undefined, true);
     }
 
     await this.unitOfWork.withTransaction(async (repos) => {
-      await repos.paymentRepository.update({ id: existing.id }, { status: "SUCCESS" });
+      await repos.paymentRepository.update(
+        { id: existing.id },
+        { status: "SUCCESS", providerPaymentId: payload.id },
+      );
 
       await repos.paymentEventRepository.create({
         paymentId: existing.id,
@@ -326,11 +332,12 @@ export class PaymentService {
     const results = await Promise.all(
       existingPayments.map(async (payment) => {
         try {
-          if (payment.status === "SUCCESS" && payment.providerRef) {
-            // 1. Trigger real refund via Razorpay API
+          if (payment.status === "SUCCESS" && payment.providerPaymentId) {
+            // 1. Trigger real refund via Razorpay API using actual Payment ID
             await this.refundRazorpayPaymentBreaker.fire(
-              payment.providerRef,
+              payment.providerPaymentId,
               Number(payment.amount),
+              payment.id,
             );
 
             // 2. Update DB status
@@ -343,7 +350,7 @@ export class PaymentService {
               currency: payment.currency,
               amount: Number(payment.amount),
               provider: payment.provider,
-              providerRef: payment.providerRef,
+              providerRef: payment.providerPaymentId,
             });
 
             logger.info(
@@ -357,14 +364,16 @@ export class PaymentService {
           }
           return "SKIPPED";
         } catch (error: unknown) {
-          logger.error(`Failed to refund payment ${payment.id}: ${this.getErrorMessage(error)}`);
-          return "ERROR";
+          const errMsg = this.getErrorMessage(error);
+          logger.error(`Failed to refund payment ${payment.id}: ${errMsg}`);
+          // Throw so the Saga step knows it failed and doesn't falsely report success
+          throw new Error(`Refund failed for payment ${payment.id}: ${errMsg}`);
         }
       }),
     );
 
     const refundedCount = results.filter((r) => r === "REFUNDED").length;
-    const failedCount = results.filter((r) => r === "FAILED" || r === "ERROR").length;
+    const failedCount = results.filter((r) => r === "FAILED").length;
     const skippedCount = results.filter((r) => r === "SKIPPED").length;
 
     return {
@@ -419,12 +428,14 @@ export class PaymentService {
    * Executes the Razorpay refund API call behind a circuit breaker.
    */
   private async executeRefundRazorpayPayment(
-    paymentId: string,
+    providerPaymentId: string,
     amount: number,
+    paymentId: string,
   ): Promise<Refunds.RazorpayRefund> {
-    return this.razorpay.payments.refund(paymentId, {
+    return this.razorpay.payments.refund(providerPaymentId, {
       amount: amount * 100, // paisa
-      notes: { reason: "Event Cancelled" },
+      notes: { reason: "Event Cancelled", paymentId },
+      receipt: `refund_${paymentId}`,
     });
   }
 
@@ -504,11 +515,11 @@ export class PaymentService {
       throw new ConflictError("Only successful payments can be refunded");
     }
 
-    if (!payment.providerRef) {
-      throw new ConflictError("Payment provider reference is missing");
+    if (!payment.providerPaymentId) {
+      throw new ConflictError("Payment provider reference (Payment ID) is missing");
     }
 
-    await this.refundRazorpayPaymentBreaker.fire(payment.providerRef, Number(payment.amount));
+    await this.refundRazorpayPaymentBreaker.fire(payment.providerPaymentId, Number(payment.amount), payment.id);
 
     const refundedPayment = await this.unitOfWork.withTransaction(async (repos) => {
       const updatedPayment = await repos.paymentRepository.update(
@@ -526,7 +537,7 @@ export class PaymentService {
         payload: {
           paymentId: payment.id,
           bookingId: payment.bookingId,
-          providerRef: payment.providerRef,
+          providerRef: payment.providerPaymentId,
         },
       });
 
@@ -549,7 +560,7 @@ export class PaymentService {
       currency: refundedPayment.currency,
       amount: Number(refundedPayment.amount),
       provider: refundedPayment.provider,
-      providerRef: refundedPayment.providerRef,
+      providerRef: refundedPayment.providerPaymentId,
     });
 
     return {

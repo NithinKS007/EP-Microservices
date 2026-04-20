@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
   FindUserByEmailRequest,
   FindUserByEmailResponse,
   UpdateUserPasswordRequest,
@@ -27,7 +28,7 @@ export class UserServiceGrpcClient {
   private readonly createUserBreaker = createCircuitBreaker<[CreateUserRequest], CreateUserResponse>(
     {
       name: "auth.user.create",
-      timeoutMs: 5000,
+      ...findCircuitBreakerPolicy("internalCommand"),
       action: (data) => this.executeCreateUser(data),
     },
   );
@@ -36,7 +37,7 @@ export class UserServiceGrpcClient {
     FindUserByEmailResult
   >({
     name: "auth.user.find_by_email",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindUserByEmail(data),
   });
   private readonly updateUserPasswordBreaker = createCircuitBreaker<
@@ -44,7 +45,7 @@ export class UserServiceGrpcClient {
     UpdateUserPasswordResponse
   >({
     name: "auth.user.update_password",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeUpdateUserPassword(data),
   });
   private readonly findUserByIdBreaker = createCircuitBreaker<
@@ -52,7 +53,7 @@ export class UserServiceGrpcClient {
     FindUserByIdResponse
   >({
     name: "auth.user.find_by_id",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindUserById(data),
   });
 

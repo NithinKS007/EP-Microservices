@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   SagaServiceClient,
@@ -21,7 +22,7 @@ export class SagaServiceGrpcClient {
     StartInitiatePaymentSagaResponse
   >({
     name: "payment.saga.start_initiate_payment",
-    timeoutMs: 9000,
+    ...findCircuitBreakerPolicy("internalCommand", { timeoutMs: 9000 }),
     action: (data) => this.executeStartInitiatePaymentSaga(data),
   });
 

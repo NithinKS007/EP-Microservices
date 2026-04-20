@@ -71,9 +71,10 @@ export class BookingService {
 
     const seatIds = seats.map((s) => s.id);
 
-    // Snapshot seat details from Event Service
+    // Snapshot seat details from Event Service (Specific seats only)
     const eventDetails = await this.eventServiceGrpcClient.findEventsByIdsWithSeats({
       eventIds: [eventId],
+      seatIds: seatIds, // [OPTIMIZATION] Only fetch the seats we actually need
     });
     const event = eventDetails.events?.find((e) => e.id === eventId);
     if (!event) throw new NotFoundError("Event not found");
@@ -257,6 +258,7 @@ export class BookingService {
         eventIds,
         seatPage: seatPage || 1,
         seatLimit: seatLimit || 0,
+        seatIds: [],
       }),
       this.paymentServiceGrpcClient.findPaymentsByBookingIds({ bookingIds }),
     ]);
@@ -331,6 +333,7 @@ export class BookingService {
         eventIds: [booking.eventId],
         seatPage: seatPage || 1,
         seatLimit: seatLimit || 0,
+        seatIds: [],
       }),
       this.paymentServiceGrpcClient.findPaymentsByBookingIds({
         bookingIds: [id],

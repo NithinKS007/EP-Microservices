@@ -47,6 +47,7 @@ export interface IEventRepository extends DatabaseAdapter<
     eventIds: string[],
     page?: number,
     limit?: number,
+    seatIds?: string[],
   ): Promise<
     Prisma.EventGetPayload<{
       include: {

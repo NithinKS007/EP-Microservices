@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BulkCancelBookingsRequest,
@@ -29,12 +30,12 @@ export class BookingServiceGrpcClient {
     FindBookingsByEventResponse
   >({
     name: "saga.booking.find_by_event",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindBookingsByEvent(data),
   });
   private readonly findBookingBreaker = createCircuitBreaker<[FindBookingRequest], FindBookingResponse>({
     name: "saga.booking.find_booking",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindBooking(data),
   });
   private readonly updateBookingStatusBreaker = createCircuitBreaker<
@@ -42,7 +43,7 @@ export class BookingServiceGrpcClient {
     UpdateBookingStatusResponse
   >({
     name: "saga.booking.update_status",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeUpdateBookingStatus(data),
   });
   private readonly bulkCancelBookingsBreaker = createCircuitBreaker<
@@ -50,7 +51,7 @@ export class BookingServiceGrpcClient {
     BulkCancelBookingsResponse
   >({
     name: "saga.booking.bulk_cancel",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkCancelBookings(data),
   });
   private readonly updateBookingAmountBreaker = createCircuitBreaker<
@@ -58,7 +59,7 @@ export class BookingServiceGrpcClient {
     UpdateBookingAmountResponse
   >({
     name: "saga.booking.update_amount",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeUpdateBookingAmount(data),
   });
 

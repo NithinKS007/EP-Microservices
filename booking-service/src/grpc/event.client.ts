@@ -1,5 +1,5 @@
 import { envConfig } from "../config/env.config";
-import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall } from "../../../utils/src";
+import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall, findCircuitBreakerPolicy } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
   BulkReleaseSeatsResponse,
@@ -21,7 +21,7 @@ export class EventServiceGrpcClient {
     BulkReleaseSeatsResponse
   >({
     name: "booking.event.bulk_release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkReleaseSeats(data),
   });
   private readonly findEventsByIdsWithSeatsBreaker = createCircuitBreaker<
@@ -29,7 +29,7 @@ export class EventServiceGrpcClient {
     FindEventsByIdsWithSeatsResponse
   >({
     name: "booking.event.find_events_with_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindEventsByIdsWithSeats(data),
   });
   private readonly confirmSeatsBreaker = createCircuitBreaker<
@@ -37,7 +37,7 @@ export class EventServiceGrpcClient {
     ConfirmSeatsResponse
   >({
     name: "booking.event.confirm_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeConfirmSeats(data),
   });
 

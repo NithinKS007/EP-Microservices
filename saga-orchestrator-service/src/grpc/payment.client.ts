@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BulkRefundPaymentsRequest,
@@ -27,7 +28,7 @@ export class PaymentServiceGrpcClient {
     CreatePaymentResponse
   >({
     name: "saga.payment.create_payment",
-    timeoutMs: 11000,
+    ...findCircuitBreakerPolicy("internalCommand", { timeoutMs: 11000 }),
     action: (data) => this.executeCreatePayment(data),
   });
   private readonly findPaymentsByBookingIdsBreaker = createCircuitBreaker<
@@ -35,7 +36,7 @@ export class PaymentServiceGrpcClient {
     FindPaymentsByBookingIdsResponse
   >({
     name: "saga.payment.find_by_booking_ids",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindPaymentsByBookingIds(data),
   });
   private readonly bulkRefundPaymentsBreaker = createCircuitBreaker<
@@ -43,7 +44,7 @@ export class PaymentServiceGrpcClient {
     BulkRefundPaymentsResponse
   >({
     name: "saga.payment.bulk_refund",
-    timeoutMs: 16000,
+    ...findCircuitBreakerPolicy("internalCommand", { timeoutMs: 16000 }),
     action: (data) => this.executeBulkRefundPayments(data),
   });
 

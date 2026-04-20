@@ -205,6 +205,10 @@ export class BookingRepository
           status: {
             in: ["PENDING", "PAYMENT_INITIATED", "CONFIRMED"],
           },
+          OR: [
+            { status: "CONFIRMED" }, // Confirmed bookings are always active
+            { expiresAt: { gt: new Date() } }, // Pending/Initiated must not be expired
+          ],
         },
       },
       select: {

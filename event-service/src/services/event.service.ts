@@ -1,4 +1,4 @@
-import { ISeatRepository } from "interface/ISeat.repository";
+import { ISeatRepository } from "./../interface/ISeat.repository";
 import {
   ConflictError,
   NotFoundError,
@@ -253,11 +253,16 @@ export class EventService {
    * Used in: Booking detail enrichment flow
    * Triggered via: gRPC
    */
-  async findEventsByIdsWithSeats(eventIds: string[], page?: number, limit?: number) {
+  async findEventsByIdsWithSeats(
+    eventIds: string[],
+    page?: number,
+    limit?: number,
+    seatIds?: string[],
+  ) {
     if (!eventIds.length) {
       return [];
     }
 
-    return await this.eventRepository.findEventsByIdsWithSeats(eventIds, page, limit);
+    return await this.eventRepository.findEventsByIdsWithSeats(eventIds, page, limit, seatIds);
   }
 }

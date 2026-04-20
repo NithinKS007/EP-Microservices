@@ -9,6 +9,7 @@ model Payment {
   status      PaymentStatus
   provider    String
   providerRef String?       @unique @map("provider_ref")
+  providerPaymentId String? @unique @map("provider_payment_id")
 
   paymentEvent PaymentEvent[]
   createdAt    DateTime       @default(now()) @map("created_at")

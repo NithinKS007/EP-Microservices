@@ -1,5 +1,5 @@
 import { envConfig } from "../config/env.config";
-import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall } from "../../../utils/src";
+import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall, findCircuitBreakerPolicy } from "../../../utils/src";
 import {
   PaymentServiceClient,
   FindPaymentsByBookingIdsRequest,
@@ -22,7 +22,7 @@ export class PaymentServiceGrpcClient {
     FindPaymentsByBookingIdsResponse
   >({
     name: "booking.payment.find_by_booking_ids",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalQuery"),
     action: (data) => this.executeFindPaymentsByBookingIds(data),
   });
   private readonly bulkFailPaymentsBreaker = createCircuitBreaker<
@@ -30,7 +30,7 @@ export class PaymentServiceGrpcClient {
     BulkFailPaymentsResponse
   >({
     name: "booking.payment.bulk_fail",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkFailPayments(data),
   });
   private readonly bulkRefundPaymentsBreaker = createCircuitBreaker<
@@ -38,7 +38,7 @@ export class PaymentServiceGrpcClient {
     BulkRefundPaymentsResponse
   >({
     name: "booking.payment.bulk_refund",
-    timeoutMs: 11000,
+    ...findCircuitBreakerPolicy("internalCommand", { timeoutMs: 11000 }),
     action: (data) => this.executeBulkRefundPayments(data),
   });
 

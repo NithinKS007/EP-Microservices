@@ -51,23 +51,34 @@ export class SagaRecoveryJob {
     for (const saga of abandonedSagas) {
       try {
         await this.unitOfWork.withTransaction(async (repos) => {
-          // Re-trigger the saga handle logic by pushing a fresh outbox event
-          // The event consumer is idempotent and will resume missing steps
-          await repos.outboxEventRepository.create({
-            topic: "saga.cancel.event.requested",
-            payload: {
-              sagaId: saga.id,
-              eventId: saga.referenceId,
-            },
-            status: "PENDING",
-          });
+          if (saga.sagaType === "CANCEL_EVENT") {
+            // Re-trigger the saga handle logic by pushing a fresh outbox event
+            // The event consumer is idempotent and will resume missing steps
+            await repos.outboxEventRepository.create({
+              topic: "saga.cancel.event.requested",
+              payload: {
+                sagaId: saga.id,
+                eventId: saga.referenceId,
+              },
+              status: "PENDING",
+            });
+            logger.info(`Successfully pushed recovery event for CANCEL_EVENT sagaId=${saga.id}`);
+          } else {
+            // Standard sync sagas like INITIATE_PAYMENT cannot be automatically resumed via outbox
+            // as they lack a persistent consumer. Mark as failed to allow manual review/retry.
+            await repos.sagaRepository.update(
+              { id: saga.id },
+              {
+                status: "failed",
+                errorMessage: "Saga recovery: Abandoned sync saga marked as failed.",
+              },
+            );
+            logger.warn(`Marked abandoned sync saga as failed: sagaId=${saga.id}, type=${saga.sagaType}`);
+          }
 
-          // Bump updatedAt so we don't pick it up again on the next cron run
-          // before the Kafka consumer has a chance to execute.
+          // Bump updatedAt so we don't pick it up again quickly
           await repos.sagaRepository.update({ id: saga.id }, { updatedAt: new Date() });
         });
-
-        logger.info(`Successfully pushed recovery event for sagaId=${saga.id}`);
       } catch (err: unknown) {
         logger.error(
           `Failed to push recovery event for sagaId=${saga.id}: ${this.getErrorMessage(err)}`,

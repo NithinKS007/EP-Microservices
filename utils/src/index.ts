@@ -11,7 +11,7 @@ export { KafkaService } from "./kafka.service";
 export { RedisService } from "./redis.service";
 export { createCircuitBreaker, ignoreExpectedCircuitBreakerError } from "./circuit.breaker";
 export type { CircuitBreakerConfig, CircuitBreakerHandle, CircuitState } from "./circuit.breaker";
-export { circuitBreakerPolicies, getCircuitBreakerPolicy } from "./resilience.policy";
+export { circuitBreakerPolicies, findCircuitBreakerPolicy } from "./resilience.policy";
 export { JwtService } from "./jwt.service";
 export { createGrpcClient, executeUnaryGrpcCall } from "./grpc/grpc.client";
 export { executeHttpRequest } from "./http.client";

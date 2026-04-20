@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
@@ -24,7 +25,7 @@ export class EventServiceGrpcClient {
   );
   private readonly lockSeatsBreaker = createCircuitBreaker<[LockSeatsRequest], LockSeatsResponse>({
     name: "payment.event.lock_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeLockSeats(data),
   });
   private readonly confirmSeatsBreaker = createCircuitBreaker<
@@ -32,7 +33,7 @@ export class EventServiceGrpcClient {
     ConfirmSeatsResponse
   >({
     name: "payment.event.confirm_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeConfirmSeats(data),
   });
   private readonly releaseSeatsBreaker = createCircuitBreaker<
@@ -40,7 +41,7 @@ export class EventServiceGrpcClient {
     ReleaseSeatsResponse
   >({
     name: "payment.event.release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeReleaseSeats(data),
   });
   private readonly bulkReleaseSeatsBreaker = createCircuitBreaker<
@@ -48,7 +49,7 @@ export class EventServiceGrpcClient {
     BulkReleaseSeatsResponse
   >({
     name: "payment.event.bulk_release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkReleaseSeats(data),
   });
 

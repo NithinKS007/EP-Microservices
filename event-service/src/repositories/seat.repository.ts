@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from "../generated/prisma/client";
 import { PrismaAdapter } from "../../../utils/src/IBase.repository";
 import { BaseRepository } from "./base.repository";
 import { ISeatRepository, SeatModel } from "./../interface/ISeat.repository";
-import { GetSeatsQueryDto } from "dtos/seat.dtos";
+import { GetSeatsQueryDto } from "./../dtos/seat.dtos";
 
 type TModel = Prisma.SeatGetPayload<Prisma.SeatFindUniqueArgs>;
 type TCreate = Prisma.SeatCreateArgs["data"];
@@ -100,19 +100,17 @@ export class SeatRepository
     return result.count;
   }
 
-  async confirmSeats(bookingId: string): Promise<void> {
-    await this.prisma.seat.updateMany({
+  async confirmSeats(bookingId: string): Promise<number> {
+    const result = await this.prisma.seat.updateMany({
       where: {
         lockedByBookingId: bookingId,
         seatStatus: "LOCKED",
-        lockExpiresAt: {
-          gt: new Date(),
-        },
       },
       data: {
         seatStatus: "SOLD",
       },
     });
+    return result.count;
   }
 
   async releaseSeats(bookingId: string) {
@@ -175,6 +173,12 @@ export class SeatRepository
     });
   }
 
+  async countSoldSeatsForBooking(bookingId: string): Promise<number> {
+    return await this.prisma.seat.count({
+      where: { lockedByBookingId: bookingId, seatStatus: "SOLD" },
+    });
+  }
+
   async countLockedSeats(eventId: string): Promise<number> {
     return await this.prisma.seat.count({
       where: { eventId, seatStatus: "LOCKED" },
@@ -193,6 +197,14 @@ export class SeatRepository
             OR: [{ lockExpiresAt: null }, { lockExpiresAt: { gte: new Date() } }],
           },
         ],
+      },
+    });
+  }
+
+  async findSeatsByIds(seatIds: string[]): Promise<SeatModel[]> {
+    return await this.prisma.seat.findMany({
+      where: {
+        id: { in: seatIds },
       },
     });
   }

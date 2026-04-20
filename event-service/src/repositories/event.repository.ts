@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from "../generated/prisma/client";
 import { PrismaAdapter } from "../../../utils/src/IBase.repository";
 import { BaseRepository } from "./base.repository";
-import { EventModel, IEventRepository } from "interface/IEvent.repository";
+import { EventModel, IEventRepository } from "./../interface/IEvent.repository";
 
 type TModel = Prisma.EventGetPayload<Prisma.EventFindUniqueArgs>;
 type TCreate = Prisma.EventCreateArgs["data"];
@@ -71,6 +71,7 @@ export class EventRepository
     eventIds: string[],
     page?: number,
     limit?: number,
+    seatIds?: string[],
   ): Promise<
     Prisma.EventGetPayload<{
       include: {
@@ -89,8 +90,9 @@ export class EventRepository
         },
       },
       include: {
-        seats:
-          page !== undefined && limit !== undefined
+        seats: seatIds && seatIds.length > 0
+          ? { where: { id: { in: seatIds } } }
+          : page !== undefined && limit !== undefined
             ? { skip: (page - 1) * limit, take: limit }
             : true,
       },

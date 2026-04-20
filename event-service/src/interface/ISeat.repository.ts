@@ -69,10 +69,9 @@ export interface ISeatRepository extends DatabaseAdapter<
   /**
    * Confirm seats
    *
-   * @param bookingId - Booking ID
-   * @returns void
+   * @returns number of affected rows
    * */
-  confirmSeats(bookingId: string): Promise<void>;
+  confirmSeats(bookingId: string): Promise<number>;
 
   /**
    * Release seats
@@ -101,6 +100,8 @@ export interface ISeatRepository extends DatabaseAdapter<
    * Count locked seats for an event
    */
   countLockedSeats(eventId: string): Promise<number>;
+  countSoldSeatsForBooking(bookingId: string): Promise<number>;
 
   findNotAvailableSeats(seatIds: string[], eventId: string): Promise<SeatModel[]>;
+  findSeatsByIds(seatIds: string[]): Promise<SeatModel[]>;
 }

@@ -3,6 +3,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BookingServiceClient,
@@ -24,7 +25,7 @@ export class BookingServiceGrpcClient {
     UpdateBookingStatusResponse
   >({
     name: "payment.booking.update_status",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeUpdateBookingStatus(data),
   });
 

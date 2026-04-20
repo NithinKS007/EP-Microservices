@@ -7,6 +7,7 @@ import {
 } from "../../../utils/src/error.handling.middleware";
 import { IEventRepository } from "./../interface/IEvent.repository";
 import { UnitOfWork } from "./../repositories/unity.of.work";
+import { logger } from "../../../utils/src";
 
 export class SeatService {
   private readonly seatRepository: ISeatRepository;
@@ -151,7 +152,20 @@ export class SeatService {
    * Triggered via: gRPC
    */
   async confirmSeats({ bookingId }: { bookingId: string }) {
-    return await this.seatRepository.confirmSeats(bookingId);
+    const affectedCount = await this.seatRepository.confirmSeats(bookingId);
+
+    if (affectedCount === 0) {
+      // Check if seats were already sold (idempotency)
+      const soldCount = await this.seatRepository.countSoldSeatsForBooking(bookingId);
+      if (soldCount === 0) {
+        throw new ConflictError(
+          `Failed to confirm seats for booking ${bookingId}. The reservation may have expired and been released.`,
+        );
+      }
+      logger.info(`Seats for booking ${bookingId} already confirmed (idempotent).`);
+    } else {
+      logger.info(`Successfully confirmed ${affectedCount} seats for booking ${bookingId}`);
+    }
   }
 
   /**
