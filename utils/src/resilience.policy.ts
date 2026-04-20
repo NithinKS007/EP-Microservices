@@ -68,7 +68,7 @@ export const circuitBreakerPolicies: Record<CircuitPolicyProfile, CircuitBreaker
   },
 };
 
-export function getCircuitBreakerPolicy(
+export function findCircuitBreakerPolicy(
   profile: CircuitPolicyProfile,
   overrides: Partial<CircuitBreakerPolicy> = {},
 ): CircuitBreakerPolicy {
