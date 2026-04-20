@@ -202,13 +202,13 @@ export class BookingRepository
       where: {
         seatId: { in: seatIds },
         booking: {
-          status: {
-            in: ["PENDING", "PAYMENT_INITIATED", "CONFIRMED"],
-          },
           OR: [
-            { status: "CONFIRMED" }, // Confirmed bookings are always active
-            { expiresAt: { gt: new Date() } }, // Pending/Initiated must not be expired
-          ],
+            { status: "CONFIRMED" },
+            {
+              status: { in: ["PENDING", "PAYMENT_INITIATED"] },
+              expiresAt: { gt: new Date() },
+            },
+          ]
         },
       },
       select: {
