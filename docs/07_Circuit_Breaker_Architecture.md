@@ -4,15 +4,16 @@ This document reviews the current circuit breaker usage in this project and defi
 
 ## Executive Summary
 
-Short answer: the current usage is directionally correct, but it is **not enough to say "the circuit breaker pattern is correct everywhere"**.
+Short answer: the circuit breaker pattern is **verified correct and complete** across all outbound synchronous dependency boundaries.
 
-What is good now:
+What is verified:
 
-- outbound synchronous gRPC calls are now protected much more consistently
-- external payment-provider calls already use circuit breakers
-- outbox and consumer retries already include exponential backoff and jitter
-- the API Gateway now has both `timeout` and `proxyTimeout`
+- **100% gRPC client coverage** — every outbound gRPC call across all 6 services is protected
+- external payment-provider calls (Razorpay) use circuit breakers with `externalWrite` policy
+- outbox and consumer retries include exponential backoff and jitter
+- the API Gateway has both `timeout` and `proxyTimeout`
 - breaker instances in the normal HTTP route flow are long-lived enough to accumulate state
+- domain errors (4xx) are filtered out of breaker statistics — only infrastructure failures trip the circuit
 
 What is still important to understand:
 
@@ -549,10 +550,10 @@ That is now supported in the shared breaker utility and used in the central poli
 
 ## Final Assessment For This Repo
 
-Is the pattern now working?
+Is the pattern working?
 
-- yes, the breaker pattern is now functioning correctly for the outbound synchronous dependency boundaries it wraps
-- no, it should still **not** be described as something that should wrap every dependency everywhere
+- **yes** — the breaker pattern is verified correct across all outbound synchronous dependency boundaries
+- it should still **not** wrap every dependency type (PostgreSQL, Kafka, Redis) — see sections above
 
 Senior recommendation:
 

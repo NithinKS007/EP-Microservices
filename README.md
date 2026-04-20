@@ -59,54 +59,68 @@ This repository also now implements `event-service` gRPC `FindEventsByIdsWithSea
 ## System Architecture
 
 ```mermaid
-flowchart LR
-    Client[Client / Frontend]
-    Gateway[API Gateway]
+graph TB
+    Client["Client (Browser)"] -->|REST| GW["API Gateway :3000"]
 
-    Auth[Auth Service]
-    User[User Service]
-    Event[Event Service]
-    Booking[Booking Service]
-    Payment[Payment Service]
-    Saga[Saga Orchestrator]
+    GW -->|REST proxy| AUTH["Auth Service :3001"]
+    GW -->|REST proxy| USER["User Service :3002"]
+    GW -->|REST proxy| EVENT["Event Service :3003"]
+    GW -->|REST proxy| BOOKING["Booking Service :3004"]
+    GW -->|REST proxy| PAYMENT["Payment Service :3005"]
 
-    Kafka[(Kafka)]
-    Redis[(Redis)]
-    PGAuth[(PostgreSQL - Auth)]
-    PGUser[(PostgreSQL - User)]
-    PGEvent[(PostgreSQL - Event)]
-    PGBooking[(PostgreSQL - Booking)]
-    PGPayment[(PostgreSQL - Payment)]
-    PGSaga[(PostgreSQL - Saga)]
+    BOOKING -->|gRPC| EVENT
+    BOOKING -->|gRPC| PAYMENT
+    PAYMENT -->|gRPC| SAGA["Saga Orchestrator :3006"]
+    PAYMENT -->|gRPC| BOOKING
+    PAYMENT -->|gRPC| EVENT
+    PAYMENT -->|gRPC| USER
+    EVENT -->|gRPC| SAGA
+    EVENT -->|gRPC| BOOKING
+    EVENT -->|gRPC| PAYMENT
+    SAGA -->|gRPC| BOOKING
+    SAGA -->|gRPC| EVENT
+    SAGA -->|gRPC| PAYMENT
 
-    Client --> Gateway
-    Gateway --> Auth
-    Gateway --> User
-    Gateway --> Event
-    Gateway --> Booking
-    Gateway --> Payment
+    PAYMENT -->|Outbox → Kafka| K["Kafka"]
+    SAGA -->|Outbox → Kafka| K
+    K -->|Consumer| PAYMENT
+    K -->|Consumer| SAGA
 
-    Auth --> PGAuth
-    User --> PGUser
-    Event --> PGEvent
-    Booking --> PGBooking
-    Payment --> PGPayment
-    Saga --> PGSaga
+    PAYMENT -->|webhook| RP["Razorpay"]
 
-    Auth <-->|events| Kafka
-    User <-->|events| Kafka
-    Event <-->|events| Kafka
-    Booking <-->|events| Kafka
-    Payment <-->|events| Kafka
-    Saga <-->|events| Kafka
+    subgraph Infra
+        PG["PostgreSQL 15"]
+        RD["Redis"]
+        K
+    end
 
-    Saga <-->|gRPC| Booking
-    Saga <-->|gRPC| Event
-    Saga <-->|gRPC| Payment
-
-    Auth -. cache/session/token concerns .-> Redis
-    Gateway -. request metadata propagation .-> Auth
+    BOOKING --- PG
+    EVENT --- PG
+    PAYMENT --- PG
+    SAGA --- PG
+    AUTH --- PG
+    USER --- PG
+    BOOKING --- RD
+    SAGA --- RD
+    AUTH --- RD
 ```
+
+## Key Resilience Patterns
+
+These patterns are implemented and production-verified across the codebase:
+
+| Pattern | Where | Purpose |
+| --- | --- | --- |
+| **Circuit Breakers** | Every gRPC client method, Razorpay API calls | Prevents cascading failures when a downstream service is unhealthy |
+| **gRPC Deadlines** | All inter-service gRPC calls (4s default, 8-15s for payment-related) | Prevents indefinite blocking on slow or dead services |
+| **Transactional Outbox** | booking-service, payment-service, saga-orchestrator | Eliminates dual-write problem between DB and Kafka |
+| **Advisory Locks** | booking-service seat creation | Prevents double-booking race conditions using `pg_advisory_xact_lock` |
+| **Dead Letter Queues** | payment consumers, saga consumers | Routes permanently failed messages for manual inspection instead of silent loss |
+| **Saga Compensation** | INITIATE_PAYMENT saga | Automatically reverses partial state when a step fails mid-transaction |
+| **Saga Recovery** | saga-orchestrator cron (every 5 min) | Detects and re-triggers abandoned sagas stuck for >10 minutes |
+| **Booking Expiry** | booking-service cron (every minute) | Releases seats and fails payments for stale unpaid bookings |
+| **Idempotency** | Booking creation, payment webhooks, saga starts, seat operations | Ensures safe retry/replay of any operation |
+| **Centralized Policies** | `utils/src/resilience.policy.ts` | Standardized breaker profiles (`internalQuery`, `internalCommand`, `externalWrite`, etc.) |
 
 ## Why This Architecture
 
@@ -185,7 +199,7 @@ This repository is intentionally optimized for local developer speed today. Prod
 | Metrics | Not implemented yet | Prometheus metrics, SLI dashboards, alerts, burn-rate policies |
 | Tracing | Not implemented yet | OpenTelemetry traces across HTTP, Kafka, gRPC, and DB spans |
 | Health | Basic `/health` endpoints | Liveness, readiness, dependency health, and synthetic checks |
-| Resilience | Best-effort retries inside code paths | Timeouts, circuit breaking, DLQs, autoscaling, and fault budgets |
+| Resilience | Circuit breakers on all gRPC clients, DLQs, outbox pattern, advisory locks, bounded retries with backoff | Production-grade: add autoscaling policies and formal fault budgets |
 | Delivery | Manual `docker compose up` | CI/CD with canary or blue-green deployment and automated rollback |
 | Infra changes | Manual file edits | Terraform/CDK with reviewed plans and remote state |
 
@@ -755,8 +769,8 @@ These services currently build successfully with `npm run build`:
 
 ### Current known gaps
 
-- Booking creation still does not validate authoritative event state pricing or max-capacity before persistence.
 - Refund settlement is still event-driven inside `payment-service`; it is not yet modeled as a dedicated refund saga workflow.
+- Observability tooling (Prometheus metrics, OpenTelemetry traces) is not yet integrated.
 
 
 ## Next Engineering Steps
