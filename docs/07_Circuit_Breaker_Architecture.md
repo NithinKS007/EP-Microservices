@@ -453,7 +453,7 @@ import {
   createCircuitBreaker,
   createGrpcClient,
   executeUnaryGrpcCall,
-  getCircuitBreakerPolicy,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 
 export class UserServiceGrpcClient {
@@ -461,7 +461,7 @@ export class UserServiceGrpcClient {
 
   private readonly findUserBreaker = createCircuitBreaker<[FindUserByIdRequest], FindUserByIdResponse>({
     name: "auth.user.find_by_id",
-    ...getCircuitBreakerPolicy("internalQuery", {
+    ...findCircuitBreakerPolicy("internalQuery", {
       timeoutMs: 3000,
     }),
     action: (data) =>
@@ -484,12 +484,12 @@ export class UserServiceGrpcClient {
 import {
   createCircuitBreaker,
   executeHttpRequest,
-  getCircuitBreakerPolicy,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 
 const providerHealthBreaker = createCircuitBreaker<[string], { status: string }>({
   name: "payment.provider.healthcheck",
-  ...getCircuitBreakerPolicy("externalRead", {
+  ...findCircuitBreakerPolicy("externalRead", {
     timeoutMs: 2500,
     capacity: 20,
   }),
