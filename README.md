@@ -454,12 +454,7 @@ The repository already exposes health endpoints such as:
 - `GET /health` on `api-gateway`
 - `GET /health` on each downstream service
 
-These are adequate for local liveness checks, but production should distinguish:
-
-- liveness
-- readiness
-- dependency health
-- synthetic business-journey health
+These are adequate for local liveness checks
 
 ### Booking and payment endpoints
 
@@ -597,11 +592,6 @@ The current repository is a strong local-development foundation, but it is not p
 
 - move all secrets to a managed secret store with rotation and auditability
 - use short-lived credentials where possible instead of static secrets
-- terminate external TLS at the edge and encrypt east-west traffic with mTLS or service-mesh policy
-- isolate services in private subnets and restrict data stores to private network access only
-- use VPC peering or Private Link for managed dependencies where cross-network connectivity is required
-- replace permissive local trust with explicit workload identity and IAM-scoped access
-- add image signing, SBOM generation, and vulnerability scanning to the release pipeline
 
 ### Database Governance
 
@@ -618,19 +608,6 @@ The current repository is a strong local-development foundation, but it is not p
 - test restore procedures regularly, not just backup creation
 - review locking behavior for booking and event inventory schema changes before rollout
 
-### Infrastructure As Code
-
-- move environment provisioning to Terraform or CDK modules
-- keep state in a remote backend with locking and audit history
-- require reviewed plans before apply
-- separate module boundaries for:
-  - networking
-  - compute
-  - data stores
-  - observability
-  - secrets
-- version infrastructure changes with the same rigor as application changes
-
 ### Reliability And Resilience
 
 - add bounded retries with exponential backoff and jitter
@@ -644,20 +621,8 @@ The current repository is a strong local-development foundation, but it is not p
 
 - place the gateway behind WAF and a managed load balancer
 - add rate limiting backed by a distributed store rather than per-process memory
-- add ingress policies and network policies that default to deny
 - separate public and private subnets
 - restrict direct access to data-plane services from the public internet
-
-### Release Engineering
-
-- version images immutably
-- promote artifacts across environments instead of rebuilding per environment
-- gate releases on tests, security scans, schema safety checks, and telemetry
-- use canary or blue-green deployment for risk-heavy services such as payment and booking
-
-## Contribution Policy
-
-This repository should be evolved with an engineering-first contribution model.
 
 ### Testing standards
 
@@ -706,17 +671,21 @@ Decision:
 
 Why:
 
-- a booking flow spans inventory, payment, and booking state transitions
-- distributed transactions would increase coupling and operational fragility
-- eventual consistency plus compensating actions is the more resilient choice at this boundary
+- The booking workflow spans multiple services (inventory, payment, booking),
+  each with its own data store.
+- Distributed transactions (e.g., 2PC) would introduce tight coupling,
+  reduce service autonomy, and increase operational fragility.
+
+- A Saga-based approach with eventual consistency and compensating actions
+  provides better resilience and scalability at this boundary.
 
 Trade-off:
 
-- more moving parts
-- higher observability requirements
-- more care needed around idempotency and replay
+- Increased system complexity due to multiple steps and state management
+- Higher observability requirements for tracing workflows
+- Need for strong idempotency and replay-safe processing
 
-### ADR-002: API gateway for north-south traffic, gRPC for east-west traffic
+### ADR-002: Adopt HTTP for external APIs and gRPC for internal service communication
 
 Decision:
 
@@ -752,7 +721,6 @@ Trade-off:
 
 - `utils` is the shared contract and infrastructure package; changes there can affect multiple services
 - local development has been configured so all services reload when their own source or shared `utils/src` changes
-- `READ.md` or equivalent short-form operational notes may still exist, but `README.md` is the primary architectural reference
 
 ### Current verified build status
 
@@ -764,8 +732,6 @@ These services currently build successfully with `npm run build`:
 - `payment-service`
 - `saga-orchestrator-service`
 - `user-service`
-
-`auth-service` still has unrelated pre-existing build issues.
 
 ### Current known gaps
 
