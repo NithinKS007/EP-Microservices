@@ -6,7 +6,7 @@ import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";
 import { SeatService } from "./services/seat.service";
 import { SeatRepository } from "./repositories/seat.repository";
-import { EmailService, TokenService } from "../../utils/src";
+import { EmailService, RedisService, TokenService } from "../../utils/src";
 import { UnitOfWork } from "./repositories/unity.of.work";
 import { CustomMiddleware } from "../../utils/src/auth.middleware";
 import { SeatController } from "./controllers/seat.controller";
@@ -24,6 +24,11 @@ const topics: { topic: string }[] = [];
 
 const emailUser = envConfig.EMAIL_USER;
 const emailPass = envConfig.EMAIL_PASS;
+
+const redisHost = envConfig.REDIS_HOST;
+const redisPort = envConfig.REDIS_PORT;
+const redisPassword = envConfig.REDIS_PASSWORD;
+const redisDb = envConfig.REDIS_DB;
 
 container.register({
   prisma: asValue(prisma),
@@ -66,6 +71,15 @@ container.register({
   bookingServiceGrpcClient: asClass(BookingServiceGrpcClient).scoped(),
   paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
   sagaServiceGrpcClient: asClass(SagaServiceGrpcClient).scoped(),
+
+  redisService: asClass(RedisService)
+    .singleton()
+    .inject(() => ({
+      host: redisHost,
+      port: redisPort,
+      password: redisPassword,
+      db: redisDb,
+    })),
 });
 
 export { container };

@@ -9,8 +9,9 @@ import { IEventRepository } from "./../interface/IEvent.repository";
 import { UnitOfWork } from "./../repositories/unity.of.work";
 import { BookingServiceGrpcClient } from "../grpc/booking.client";
 import { PaymentServiceGrpcClient } from "../grpc/payment.client";
-import { BookingStatus, PaymentStatus } from "../../../utils/src";
+import { BookingStatus, logger, PaymentStatus, RedisService } from "../../../utils/src";
 import { SagaServiceGrpcClient } from "../grpc/saga.client";
+import { envConfig } from "../config/env.config";
 
 export class EventService {
   private readonly eventRepository: IEventRepository;
@@ -19,6 +20,7 @@ export class EventService {
   private readonly bookingServiceGrpcClient: BookingServiceGrpcClient;
   private readonly paymentServiceGrpcClient: PaymentServiceGrpcClient;
   private readonly sagaServiceGrpcClient: SagaServiceGrpcClient;
+  private readonly redisService: RedisService;
   constructor({
     eventRepository,
     seatRepository,
@@ -26,6 +28,7 @@ export class EventService {
     bookingServiceGrpcClient,
     paymentServiceGrpcClient,
     sagaServiceGrpcClient,
+    redisService,
   }: {
     eventRepository: IEventRepository;
     seatRepository: ISeatRepository;
@@ -33,6 +36,7 @@ export class EventService {
     bookingServiceGrpcClient: BookingServiceGrpcClient;
     paymentServiceGrpcClient: PaymentServiceGrpcClient;
     sagaServiceGrpcClient: SagaServiceGrpcClient;
+    redisService: RedisService;
   }) {
     this.eventRepository = eventRepository;
     this.seatRepository = seatRepository;
@@ -40,6 +44,7 @@ export class EventService {
     this.bookingServiceGrpcClient = bookingServiceGrpcClient;
     this.paymentServiceGrpcClient = paymentServiceGrpcClient;
     this.sagaServiceGrpcClient = sagaServiceGrpcClient;
+    this.redisService = redisService;
   }
 
   /**
@@ -75,14 +80,25 @@ export class EventService {
 
   /**
    * Loads one event by id or throws when missing.
+   * Uses cache-aside pattern for metadata (60s TTL).
    * Used in: Event detail flow
    * Triggered via: REST
    */
   async findEventById(id: string) {
+    // Try cache first
+    const cached = await this.findEventFromCache(id);
+    if (cached) {
+      return cached;
+    }
+
     const event = await this.eventRepository.findById(id);
     if (!event) {
       throw new NotFoundError("Event not found, Please try again later");
     }
+
+    // Warm cache
+    await this.setEventInCache(id, event);
+
     return event;
   }
 
@@ -104,6 +120,7 @@ export class EventService {
       throw new ConflictError("Event already exists for this date, Please try again later");
     }
     await this.eventRepository.update({ id }, { eventDate, name, venueName });
+    await this.invalidateEventCache(id);
   }
 
   /**
@@ -188,7 +205,9 @@ export class EventService {
     if (state.hasUnsettledPayments) {
       throw new ConflictError("Event with unsettled payments cannot be deleted");
     }
-    return await this.eventRepository.delete({ id });
+    const deleted = await this.eventRepository.delete({ id });
+    await this.invalidateEventCache(id);
+    return deleted;
   }
 
   /**
@@ -245,7 +264,66 @@ export class EventService {
     }
 
     await this.eventRepository.update({ id }, { status: "CANCELLED" });
+    await this.invalidateEventCache(id);
     return this.eventRepository.findById(id);
+  }
+
+  // ─── Event Metadata Cache Helpers ────────────────────────────────
+
+  private eventCacheKey(id: string): string {
+    return `${envConfig.EVENT_CACHE_PREFIX}:${id}`;
+  }
+
+  /**
+   * Reads event metadata from Redis cache.
+   * Returns null on miss or Redis error (optional cache — never blocks reads).
+   */
+  private async findEventFromCache(id: string) {
+    if (!this.redisService.isConnected()) return null;
+
+    try {
+      const raw = await this.redisService.get(this.eventCacheKey(id));
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      logger.debug(`Cache HIT for event ${id}`);
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Writes event metadata to Redis with a short TTL.
+   * Fire-and-forget — cache write failure never blocks the response.
+   */
+  private async setEventInCache(id: string, event: unknown): Promise<void> {
+    if (!this.redisService.isConnected()) return;
+
+    try {
+      await this.redisService.set(
+        this.eventCacheKey(id),
+        JSON.stringify(event),
+        envConfig.EVENT_CACHE_TTL_SECONDS,
+      );
+    } catch (err) {
+      logger.warn(`Failed to cache event ${id}: ${err}`);
+    }
+  }
+
+  /**
+   * Removes stale event metadata from cache after any mutation.
+   * Fire-and-forget — invalidation failure is non-critical (TTL will clean up).
+   */
+  private async invalidateEventCache(id: string): Promise<void> {
+    if (!this.redisService.isConnected()) return;
+
+    try {
+      await this.redisService.del(this.eventCacheKey(id));
+      logger.debug(`Cache invalidated for event ${id}`);
+    } catch (err) {
+      logger.warn(`Failed to invalidate cache for event ${id}: ${err}`);
+    }
   }
 
   /**

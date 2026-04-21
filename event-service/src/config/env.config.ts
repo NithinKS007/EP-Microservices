@@ -17,6 +17,14 @@ interface Env {
 
   EMAIL_USER: string;
   EMAIL_PASS: string;
+
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD: string;
+  REDIS_DB: number;
+
+  EVENT_CACHE_PREFIX: string;
+  EVENT_CACHE_TTL_SECONDS: number;
 }
 
 export const envConfig: Env = {
@@ -36,4 +44,12 @@ export const envConfig: Env = {
 
   EMAIL_USER: process.env.EMAIL_USER || "email",
   EMAIL_PASS: process.env.EMAIL_PASS || "password",
+
+  REDIS_HOST: process.env.REDIS_HOST || "redis",
+  REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
+  REDIS_DB: Number(process.env.REDIS_DB) || 0,
+
+  EVENT_CACHE_PREFIX: process.env.EVENT_CACHE_PREFIX || "ep:event:meta",
+  EVENT_CACHE_TTL_SECONDS: Number(process.env.EVENT_CACHE_TTL_SECONDS) || 60,
 };

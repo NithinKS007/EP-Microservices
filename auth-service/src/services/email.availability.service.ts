@@ -66,11 +66,13 @@ export class EmailAvailabilityService {
     const normalizedEmail = email.trim().toLowerCase();
     const emailExistsKey = `${envConfig.AUTH_EMAIL_EXISTS_CACHE_PREFIX}:${normalizedEmail}`;
 
+    let bloomMaybePresent: boolean | null = null;
+
     if (this.redisService.isConnected()) {
       try {
         await this.initializeBloomFilter();
 
-        const bloomMaybePresent = await this.redisService.bfExists(
+        bloomMaybePresent = await this.redisService.bfExists(
           envConfig.AUTH_EMAIL_BLOOM_KEY,
           normalizedEmail
         );
@@ -86,47 +88,59 @@ export class EmailAvailabilityService {
             bloomMaybePresent,
           };
         }
-
-        const userData =
-          await this.userServiceGrpcClient.findUserByEmail({
-            email: normalizedEmail,
-          });
-
-        if (userData.user) {
-          await this.rememberExistingEmail(normalizedEmail);
-
-          return {
-            email,
-            normalizedEmail,
-            available: false,
-            source: "database",
-            bloomMaybePresent,
-          };
-        }
-
-        return {
-          email,
-          normalizedEmail,
-          available: true,
-          source: "database",
-          bloomMaybePresent,
-        };
       } catch (error) {
         logger.warn(
-          `Email availability check failed for ${normalizedEmail}. Error: ${
+          `Redis/Bloom check failed for ${normalizedEmail}, falling through to DB. Error: ${
             error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
     }
 
-    return {
-      email,
-      normalizedEmail,
-      available: true,
-      source: "fallback",
-      bloomMaybePresent: null,
-    };
+    // Always fall through to the authoritative DB check when Redis
+    // cache did not return a definitive "exists" answer.
+    try {
+      const userData =
+        await this.userServiceGrpcClient.findUserByEmail({
+          email: normalizedEmail,
+        });
+
+      if (userData.user) {
+        await this.rememberExistingEmail(normalizedEmail);
+
+        return {
+          email,
+          normalizedEmail,
+          available: false,
+          source: "database",
+          bloomMaybePresent,
+        };
+      }
+
+      return {
+        email,
+        normalizedEmail,
+        available: true,
+        source: "database",
+        bloomMaybePresent,
+      };
+    } catch (error) {
+      logger.error(
+        `DB availability check also failed for ${normalizedEmail}. Error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+
+      // Both Redis and DB failed — return unavailable to be safe
+      // (reject signup rather than risk duplicates)
+      return {
+        email,
+        normalizedEmail,
+        available: false,
+        source: "fallback_safe",
+        bloomMaybePresent: null,
+      };
+    }
   }
 
   async rememberExistingEmail(email: string): Promise<void> {
@@ -141,7 +155,7 @@ export class EmailAvailabilityService {
       await this.initializeBloomFilter(true);
 
       await Promise.all([
-        this.redisService.set(emailExistsKey, "1"),
+        this.redisService.set(emailExistsKey, "1", 86400),
         this.redisService.bfAdd(
           envConfig.AUTH_EMAIL_BLOOM_KEY,
           normalizedEmail
