@@ -26,8 +26,6 @@ Each service completely owns its subset of the PostgeSQL database (structurally 
 ### Why it works this way
 Microservices must be independently deployable. Shared databases lead to tight coupling where changing a column in `user-service` accidentally breaks `payment-service`. By enforcing strict boundaries, we guarantee isolation.
 
-*Note: The `BookingSeat` model maps `seatId` to `bookingId`. The unqiueness constraint applies to the combination (`@@unique([bookingId, seatId])`), meaning a cancelled seat can successfully be rebooked by another booking.*
-
 ## Service Boundaries
 
 | Service | Responsibility | Interface Style |
