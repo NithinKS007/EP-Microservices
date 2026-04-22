@@ -220,6 +220,7 @@ export class KafkaService {
             `[Kafka Consumer] Error processing message on topic "${topic}" [partition ${partition}]`,
             err,
           );
+          throw err;
         }
       },
     });
@@ -245,6 +246,7 @@ export class KafkaService {
           }
         } catch (err) {
           logger.error(`[Kafka Consumer] Error on topic "${topic}"`, err);
+          throw err;
         }
       },
     });

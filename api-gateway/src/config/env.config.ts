@@ -18,6 +18,11 @@ interface Env {
   JWT_ACCESS_TOKEN_EXPIRATION: string;
   JWT_REFRESH_TOKEN_SECRET: string;
   JWT_REFRESH_TOKEN_EXPIRATION: string;
+ 
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD: string;
+  REDIS_DB: number;
 }
 
 export const envConfig: Env = {
@@ -38,4 +43,9 @@ export const envConfig: Env = {
   JWT_ACCESS_TOKEN_EXPIRATION: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "1d",
   JWT_REFRESH_TOKEN_SECRET: process.env.JWT_REFRESH_TOKEN_SECRET || "secret",
   JWT_REFRESH_TOKEN_EXPIRATION: process.env.JWT_REFRESH_TOKEN_EXPIRATION || "7d",
+ 
+  REDIS_HOST: process.env.REDIS_HOST || "redis",
+  REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || "password",
+  REDIS_DB: Number(process.env.REDIS_DB) || 0,
 };

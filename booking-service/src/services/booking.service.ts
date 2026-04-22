@@ -1,4 +1,4 @@
-import { CreateBookingDto, GetBookingsQueryDto } from "./../dtos/booking.dtos";
+import { CreateBookingDto, GetBookingByIdRequestDto, GetBookingsQueryDto } from "./../dtos/booking.dtos";
 import {
   ConflictError,
   ForbiddenError,
@@ -69,19 +69,12 @@ export class BookingService {
       }
     }
 
-    // Application-level seat conflict check (replaces removed DB unique constraint)
     const seatIds = seats.map((s) => s.id);
-    const conflictingSeats = await this.bookingRepository.findActiveBookingsBySeatIds(seatIds);
-    if (conflictingSeats.length > 0) {
-      const conflictDetails = conflictingSeats
-        .map((c) => `seat ${c.seatId} (booking ${c.bookingId}, status ${c.status})`)
-        .join(", ");
-      throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
-    }
 
-    // Snapshot seat details from Event Service
+    // Snapshot seat details from Event Service (Specific seats only)
     const eventDetails = await this.eventServiceGrpcClient.findEventsByIdsWithSeats({
       eventIds: [eventId],
+      seatIds: seatIds, // [OPTIMIZATION] Only fetch the seats we actually need
     });
     const event = eventDetails.events?.find((e) => e.id === eventId);
     if (!event) throw new NotFoundError("Event not found");
@@ -89,6 +82,19 @@ export class BookingService {
     const seatMap = new Map(event.seats?.map((s) => [s.id, s]) || []);
 
     const booking = await this.unitOfWork.withTransaction(async (repos) => {
+      // 1. Acquire distributed transaction-level locks to prevent TOCTOU race conditions globally
+      await repos.bookingRepository.acquireAdvisoryLocks(seatIds);
+
+      // 2. Perform application-level seat conflict check INSIDE the locked critical section
+      const conflictingSeats = await repos.bookingRepository.findActiveBookingsBySeatIds(seatIds);
+      if (conflictingSeats.length > 0) {
+        const conflictDetails = conflictingSeats
+          .map((c) => `seatId ${c.seatId} (bookingId ${c.bookingId}, booking status ${c.status})`)
+          .join(", ");
+        throw new ConflictError(`The following seats are already unavailable: ${conflictDetails}`);
+      }
+
+      // 3. Persist the booking and its seats
       const createdBooking = await repos.bookingRepository.create({
         userId,
         eventId,
@@ -195,9 +201,9 @@ export class BookingService {
    * Used in: Cancel Event Saga
    * Triggered via: gRPC
    */
-  async findBookingsByEvent(eventId: string) {
+  async findBookingsByEvent(eventId: string, page?: number, limit?: number) {
     if (!eventId) throw new ValidationError("Missing required fields");
-    const bookings = await this.bookingRepository.findBookingsByEventId(eventId);
+    const bookings = await this.bookingRepository.findBookingsByEventId(eventId, page, limit);
     return bookings.map((booking) => ({
       ...booking,
       totalAmount: Number(booking.totalAmount),
@@ -223,7 +229,7 @@ export class BookingService {
    * Used in: Booking REST read flow
    * Triggered via: REST
    */
-  async findBookingsWithPagination({ limit, page, eventId, userId }: GetBookingsQueryDto) {
+  async findBookingsWithPagination({ limit, page, eventId, userId, seatPage, seatLimit }: GetBookingsQueryDto) {
     const bookings = await this.bookingRepository.findPaginatedBookingsWithSeats({
       limit,
       page,
@@ -238,6 +244,8 @@ export class BookingService {
           total: 0,
           page,
           limit,
+          seatPage: seatPage ?? null,
+          seatLimit: seatLimit ?? null,
         },
       };
     }
@@ -246,63 +254,74 @@ export class BookingService {
     const eventIds = [...new Set(bookings.data.map((b) => b.eventId))];
 
     const [eventDetails, paymentDetails] = await Promise.all([
-      this.eventServiceGrpcClient.findEventsByIdsWithSeats({ eventIds }),
+      this.eventServiceGrpcClient.findEventsByIdsWithSeats({
+        eventIds,
+        seatPage: seatPage || 1,
+        seatLimit: seatLimit || 0,
+        seatIds: [],
+      }),
       this.paymentServiceGrpcClient.findPaymentsByBookingIds({ bookingIds }),
     ]);
 
     const eventMap = new Map(eventDetails.events?.map((e) => [e.id, e]) || []);
     const paymentMap = new Map(paymentDetails.payments?.map((p) => [p.bookingId, p]) || []);
 
-    logger.info(`Event details: ${JSON.stringify(eventDetails)}`);
-    logger.info(`Payment details: ${JSON.stringify(paymentDetails)}`);
+    return {
+      data: bookings.data.map((booking) => {
+        const event = eventMap.get(booking.eventId);
+        const payment = paymentMap.get(booking.id);
 
-    return bookings.data.map((booking) => {
-      const event = eventMap.get(booking.eventId);
-      const payment = paymentMap.get(booking.id);
-
-      return {
-        id: booking.id,
-        status: booking.status,
-        totalAmount: Number(booking.totalAmount),
-        expiresAt: booking.expiresAt,
-        createdAt: booking.createdAt,
-        updatedAt: booking.updatedAt,
-        event: {
-          name: event?.name,
-          eventDate: event?.eventDate,
-          venueName: event?.venueName,
-          description: event?.description,
-          status: this.mapEventStatus(event?.status),
-        },
-        // Seat Enrichment (Map internal IDs to readable labels)
-        BookedSeats:
-          booking.bookingSeats?.map((bs) => {
-            return {
-              id: bs.seatId,
-              bookingId: bs.bookingId,
-              price: Number(bs.price),
-              createdAt: bs.createdAt,
-              updatedAt: bs.updatedAt,
-              seatDetails: {
-                seatNumber: bs.seatNumber,
-                seatTier: bs.seatTier
-              },
-            };
-          }) || [],
-        // Payment Enrichment
-        payment: {
-          id: payment?.id,
-          amount: Number(payment?.amount),
-          currency: payment?.currency,
-          status: this.mapPaymentStatus(payment?.status),
-          provider: payment?.provider,
-          providerRef: payment?.providerRef,
-        },
-      };
-    });
+        return {
+          id: booking.id,
+          status: booking.status,
+          totalAmount: Number(booking.totalAmount),
+          expiresAt: booking.expiresAt,
+          createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
+          event: {
+            name: event?.name,
+            eventDate: event?.eventDate,
+            venueName: event?.venueName,
+            description: event?.description,
+            status: this.mapEventStatus(event?.status),
+          },
+          // Seat Enrichment (Map internal IDs to readable labels)
+          BookedSeats:
+            booking.bookingSeats?.map((bs) => {
+              return {
+                id: bs.seatId,
+                bookingId: bs.bookingId,
+                price: Number(bs.price),
+                createdAt: bs.createdAt,
+                updatedAt: bs.updatedAt,
+                seatDetails: {
+                  seatNumber: bs.seatNumber,
+                  seatTier: bs.seatTier,
+                },
+              };
+            }) || [],
+          // Payment Enrichment
+          payment: {
+            id: payment?.id,
+            amount: Number(payment?.amount),
+            currency: payment?.currency,
+            status: this.mapPaymentStatus(payment?.status),
+            provider: payment?.provider,
+            providerRef: payment?.providerRef,
+          },
+        };
+      }),
+      meta: {
+        total: bookings.meta.total,
+        page,
+        limit,
+        seatPage: seatPage ?? null,
+        seatLimit: seatLimit ?? null,
+      },
+    };
   }
 
-  async findBookingByIdWithDetails(id: string) {
+  async findBookingByIdWithDetails({ id, seatPage, seatLimit }: GetBookingByIdRequestDto) {
     const booking = await this.bookingRepository.findBookingByIdWithSeats(id);
 
     if (!booking) {
@@ -312,17 +331,16 @@ export class BookingService {
     const [eventDetails, paymentDetails] = await Promise.all([
       this.eventServiceGrpcClient.findEventsByIdsWithSeats({
         eventIds: [booking.eventId],
+        seatPage: seatPage || 1,
+        seatLimit: seatLimit || 0,
+        seatIds: [],
       }),
       this.paymentServiceGrpcClient.findPaymentsByBookingIds({
         bookingIds: [id],
       }),
     ]);
 
-    logger.info(`Event details: ${JSON.stringify(eventDetails)}`);
-    logger.info(`Payment details: ${JSON.stringify(paymentDetails)}`);
-
     const eventMap = new Map((eventDetails.events ?? []).map((e) => [e.id, e]));
-
     const paymentMap = new Map((paymentDetails.payments ?? []).map((p) => [p.bookingId, p]));
 
     const event = eventMap.get(booking.eventId);
@@ -355,7 +373,7 @@ export class BookingService {
 
             seatDetails: {
               seatNumber: bs.seatNumber,
-              seatTier: bs.seatTier
+              seatTier: bs.seatTier,
             },
           };
         }) || [],
@@ -367,6 +385,10 @@ export class BookingService {
         status: this.mapPaymentStatus(payment?.status),
         provider: payment?.provider,
         providerRef: payment?.providerRef,
+      },
+      meta: {
+        seatPage: seatPage ?? null,
+        seatLimit: seatLimit ?? null,
       },
     };
   }
@@ -380,10 +402,10 @@ export class BookingService {
     const booking = await this.findBookingForAction(id, actor);
 
     if (booking.status === "CONFIRMED") {
-      return await this.findBookingByIdWithDetails(id);
+      return await this.findBookingByIdWithDetails({ id });
     }
 
-    if ( ["CANCELLED","EXPIRED"].includes(booking.status)) {
+    if (["CANCELLED", "EXPIRED"].includes(booking.status)) {
       throw new ConflictError("Booking is already cancelled or expired,Please try again later");
     }
 
@@ -395,7 +417,7 @@ export class BookingService {
     await this.eventServiceGrpcClient.confirmSeats({ bookingId: id });
     await this.bookingRepository.update({ id }, { status: "CONFIRMED" });
 
-    return await this.findBookingByIdWithDetails(id);
+    return await this.findBookingByIdWithDetails({ id });
   }
 
   /**
@@ -407,7 +429,7 @@ export class BookingService {
     const booking = await this.findBookingForAction(id, actor);
 
     if (booking.status === "CANCELLED") {
-      return await this.findBookingByIdWithDetails(id);
+      return await this.findBookingByIdWithDetails({ id });
     }
 
     if (booking.status === "EXPIRED") {
@@ -425,13 +447,13 @@ export class BookingService {
     await this.eventServiceGrpcClient.bulkReleaseSeats({ bookingIds: [id] });
 
     // Fail any INITIATED payment when cancelling a non-confirmed booking
-    if (["PENDING","PAYMENT_INITIATED"].includes(booking.status) ) {
+    if (["PENDING", "PAYMENT_INITIATED"].includes(booking.status)) {
       await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
     }
 
     await this.bookingRepository.update({ id }, { status: "CANCELLED" });
 
-    return await this.findBookingByIdWithDetails(id);
+    return await this.findBookingByIdWithDetails({ id });
   }
 
   /**
@@ -443,10 +465,10 @@ export class BookingService {
     const booking = await this.findBookingForAction(id, actor);
 
     if (booking.status === "EXPIRED") {
-      return await this.findBookingByIdWithDetails(id);
+      return await this.findBookingByIdWithDetails({ id });
     }
 
-    if (["CANCELLED","CONFIRMED"].includes(booking.status)) {
+    if (["CANCELLED", "CONFIRMED"].includes(booking.status)) {
       throw new ConflictError("Only open bookings can be expired, Please try again later");
     }
 
@@ -459,7 +481,7 @@ export class BookingService {
     await this.paymentServiceGrpcClient.bulkFailPayments({ bookingIds: [id] });
     await this.bookingRepository.update({ id }, { status: "EXPIRED" });
 
-    return await this.findBookingByIdWithDetails(id);
+    return await this.findBookingByIdWithDetails({ id });
   }
 
   private async findBookingForAction(id: string, actor?: AuthReq["user"]) {
@@ -506,19 +528,6 @@ export class BookingService {
         return "REGULAR";
       case SeatTier.SEAT_TIER_ECONOMY:
         return "ECONOMY";
-      default:
-        return "UNSPECIFIED";
-    }
-  }
-
-  private mapSeatStatus(status: number | undefined): string {
-    switch (status) {
-      case SeatStatus.SEAT_STATUS_AVAILABLE:
-        return "AVAILABLE";
-      case SeatStatus.SEAT_STATUS_LOCKED:
-        return "LOCKED";
-      case SeatStatus.SEAT_STATUS_SOLD:
-        return "SOLD";
       default:
         return "UNSPECIFIED";
     }

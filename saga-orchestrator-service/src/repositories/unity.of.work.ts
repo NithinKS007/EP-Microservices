@@ -42,7 +42,7 @@ export class UnitOfWork {
 
         return callback({ ...repos });
       },
-      { timeout: 700000 },
+      { timeout: 30000 },
     );
   }
 }

@@ -2,8 +2,7 @@ import { envConfig } from "../config/env.config";
 import {
   createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
-  Metadata,
+  executeUnaryGrpcCall,
 } from "../../../utils/src";
 import {
   SagaServiceClient,
@@ -38,16 +37,10 @@ export class SagaServiceGrpcClient {
   private executeStartCancelEventSaga(
     data: StartCancelEventSagaRequest,
   ): Promise<StartCancelEventSagaResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.startCancelEventSaga(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.startCancelEventSaga(data, metadata, options, callback),
     });
   }
 }

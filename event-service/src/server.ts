@@ -6,6 +6,7 @@ import { app } from "./app";
 import { envConfig } from "./config/env.config";
 import { closePrisma, connectPrisma } from "./utils/dbconfig";
 import { startEventGrpcServer } from "./grpc/start.server";
+import { RedisService } from "../../utils/src";
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -14,6 +15,11 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     const kafkaService = container.resolve<KafkaService>("kafkaService");
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.disconnect();
+    }
+
+    const redisService = container.resolve<RedisService>("redisService");
+    if (redisService.isConnected()) {
+      await redisService.disconnect();
     }
 
     // Close database connection
@@ -61,6 +67,13 @@ const startServer = async () => {
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();
       await kafkaService.connectConsumer();
+    }
+
+    const redisService = container.resolve<RedisService>("redisService");
+    try {
+      await redisService.connect();
+    } catch (err) {
+      logger.warn(`Redis connection failed, event metadata cache will be skipped: ${err}`);
     }
 
     const server = app.listen(envConfig.PORT, () => {

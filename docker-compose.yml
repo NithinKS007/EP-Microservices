@@ -18,6 +18,19 @@ services:
     networks:
       - backend
       
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis_commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - backend
+    # http://localhost:8081
+
   postgres:
     image: postgres:15
     restart: always

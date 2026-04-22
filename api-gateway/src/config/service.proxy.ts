@@ -32,6 +32,7 @@ class ServiceProxy {
         "/api/v1/auth/sign-up",
         "/api/v1/auth/password-reset",
         "/api/v1/auth/password-reset/:token",
+        "/api/v1/auth/email/check",
         "/health",
       ],
     },
@@ -81,6 +82,7 @@ class ServiceProxy {
       target: service.url,
       changeOrigin: true,
       timeout: envConfig.DEFAULT_TIMEOUT,
+      proxyTimeout: envConfig.DEFAULT_TIMEOUT,
       logger,
       pathRewrite: {
         [`^${service.path}`]: "",

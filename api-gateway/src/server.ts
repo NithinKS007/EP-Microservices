@@ -1,5 +1,6 @@
-import { logger } from "../../utils/src";
-import { app } from "./app";
+import { container } from "./container";
+import { logger, RateLimiter, RedisService } from "../../utils/src";
+import { createApp } from "./app";
 import { envConfig } from "./config/env.config";
 
 /**
@@ -10,11 +11,15 @@ import { envConfig } from "./config/env.config";
  * @function gracefulShutdown
  * @param {string} signal - The signal received (e.g., SIGINT, SIGTERM).
  */
-
 const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    const redisService = container.resolve<RedisService>("redisService");
+    if (redisService.isConnected()) {
+      await redisService.disconnect();
+    }
+
     logger.info("✅ Graceful shutdown completed");
     process.exit(0);
   } catch (error) {
@@ -26,7 +31,6 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 /**
  * Listen for termination signals and trigger graceful shutdown.
  */
-
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
@@ -36,9 +40,16 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
  *
  * @function startServer
  */
-
-const startServer = () => {
+const startServer = async () => {
   try {
+    const redisService = container.resolve<RedisService>("redisService");
+    await redisService.connect();
+
+    const rateLimiter = container.resolve<RateLimiter>("rateLimiter");
+    rateLimiter.addClient(redisService.returnRawClient());
+
+    const app = createApp(rateLimiter);
+    
     const server = app.listen(envConfig.PORT, () => {
       logger.info(
         `Server is running on port ${envConfig.PORT} with service name "${envConfig.SERVICE_NAME}"`,

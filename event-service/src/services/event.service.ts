@@ -1,4 +1,4 @@
-import { ISeatRepository } from "interface/ISeat.repository";
+import { ISeatRepository } from "./../interface/ISeat.repository";
 import {
   ConflictError,
   NotFoundError,
@@ -9,8 +9,9 @@ import { IEventRepository } from "./../interface/IEvent.repository";
 import { UnitOfWork } from "./../repositories/unity.of.work";
 import { BookingServiceGrpcClient } from "../grpc/booking.client";
 import { PaymentServiceGrpcClient } from "../grpc/payment.client";
-import { BookingStatus, PaymentStatus } from "../../../utils/src";
+import { BookingStatus, logger, PaymentStatus, RedisService } from "../../../utils/src";
 import { SagaServiceGrpcClient } from "../grpc/saga.client";
+import { envConfig } from "../config/env.config";
 
 export class EventService {
   private readonly eventRepository: IEventRepository;
@@ -19,6 +20,7 @@ export class EventService {
   private readonly bookingServiceGrpcClient: BookingServiceGrpcClient;
   private readonly paymentServiceGrpcClient: PaymentServiceGrpcClient;
   private readonly sagaServiceGrpcClient: SagaServiceGrpcClient;
+  private readonly redisService: RedisService;
   constructor({
     eventRepository,
     seatRepository,
@@ -26,6 +28,7 @@ export class EventService {
     bookingServiceGrpcClient,
     paymentServiceGrpcClient,
     sagaServiceGrpcClient,
+    redisService,
   }: {
     eventRepository: IEventRepository;
     seatRepository: ISeatRepository;
@@ -33,6 +36,7 @@ export class EventService {
     bookingServiceGrpcClient: BookingServiceGrpcClient;
     paymentServiceGrpcClient: PaymentServiceGrpcClient;
     sagaServiceGrpcClient: SagaServiceGrpcClient;
+    redisService: RedisService;
   }) {
     this.eventRepository = eventRepository;
     this.seatRepository = seatRepository;
@@ -40,6 +44,7 @@ export class EventService {
     this.bookingServiceGrpcClient = bookingServiceGrpcClient;
     this.paymentServiceGrpcClient = paymentServiceGrpcClient;
     this.sagaServiceGrpcClient = sagaServiceGrpcClient;
+    this.redisService = redisService;
   }
 
   /**
@@ -75,14 +80,25 @@ export class EventService {
 
   /**
    * Loads one event by id or throws when missing.
+   * Uses cache-aside pattern for metadata (60s TTL).
    * Used in: Event detail flow
    * Triggered via: REST
    */
   async findEventById(id: string) {
+    // Try cache first
+    const cached = await this.findEventFromCache(id);
+    if (cached) {
+      return cached;
+    }
+
     const event = await this.eventRepository.findById(id);
     if (!event) {
       throw new NotFoundError("Event not found, Please try again later");
     }
+
+    // Warm cache
+    await this.setEventInCache(id, event);
+
     return event;
   }
 
@@ -104,6 +120,7 @@ export class EventService {
       throw new ConflictError("Event already exists for this date, Please try again later");
     }
     await this.eventRepository.update({ id }, { eventDate, name, venueName });
+    await this.invalidateEventCache(id);
   }
 
   /**
@@ -130,35 +147,67 @@ export class EventService {
       );
     }
 
-    const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({
-      eventId: id,
-    });
-    const bookings = bookingsResponse.bookings;
-    const hasActiveBookings = bookings.some(
-      (booking) =>
-        booking.status !== BookingStatus.BOOKING_STATUS_CANCELLED &&
-        booking.status !== BookingStatus.BOOKING_STATUS_EXPIRED,
-    );
+    const state = {
+      page: 1,
+      limit: 500,
+      hasMore: true,
+      hasActiveBookings: false,
+      hasUnsettledPayments: false,
+    };
 
-    if (hasActiveBookings) {
-      throw new ConflictError("Event with active bookings cannot be deleted");
-    }
-
-    if (bookings.length > 0) {
-      const paymentsResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
-        bookingIds: bookings.map((booking) => booking.id),
+    while (state.hasMore) {
+      const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({
+        eventId: id,
+        page: state.page,
+        limit: state.limit,
       });
-      const hasUnsettledPayments = (paymentsResponse.payments || []).some(
+      const batch = bookingsResponse.bookings || [];
+
+      if (batch.length === 0) {
+        state.hasMore = false;
+        break;
+      }
+
+      const activeInBatch = batch.some(
+        (booking) =>
+          booking.status !== BookingStatus.BOOKING_STATUS_CANCELLED &&
+          booking.status !== BookingStatus.BOOKING_STATUS_EXPIRED,
+      );
+
+      if (activeInBatch) {
+        state.hasActiveBookings = true;
+        break;
+      }
+
+      // We only lookup payments if we need to verify them, mapping IDs of the batch.
+      const paymentBatchResponse = await this.paymentServiceGrpcClient.findPaymentsByBookingIds({
+        bookingIds: batch.map((booking) => booking.id),
+      });
+
+      const unsettledInBatch = (paymentBatchResponse.payments || []).some(
         (payment) =>
           payment.status !== PaymentStatus.PAYMENT_STATUS_FAILED &&
           payment.status !== PaymentStatus.PAYMENT_STATUS_REFUNDED,
       );
 
-      if (hasUnsettledPayments) {
-        throw new ConflictError("Event with unsettled payments cannot be deleted");
+      if (unsettledInBatch) {
+        state.hasUnsettledPayments = true;
+        break;
       }
+
+      state.page++;
     }
-    return await this.eventRepository.delete({ id });
+
+    if (state.hasActiveBookings) {
+      throw new ConflictError("Event with active bookings cannot be deleted");
+    }
+
+    if (state.hasUnsettledPayments) {
+      throw new ConflictError("Event with unsettled payments cannot be deleted");
+    }
+    const deleted = await this.eventRepository.delete({ id });
+    await this.invalidateEventCache(id);
+    return deleted;
   }
 
   /**
@@ -215,7 +264,66 @@ export class EventService {
     }
 
     await this.eventRepository.update({ id }, { status: "CANCELLED" });
+    await this.invalidateEventCache(id);
     return this.eventRepository.findById(id);
+  }
+
+  // ─── Event Metadata Cache Helpers ────────────────────────────────
+
+  private eventCacheKey(id: string): string {
+    return `${envConfig.EVENT_CACHE_PREFIX}:${id}`;
+  }
+
+  /**
+   * Reads event metadata from Redis cache.
+   * Returns null on miss or Redis error (optional cache — never blocks reads).
+   */
+  private async findEventFromCache(id: string) {
+    if (!this.redisService.isConnected()) return null;
+
+    try {
+      const raw = await this.redisService.get(this.eventCacheKey(id));
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      logger.debug(`Cache HIT for event ${id}`);
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Writes event metadata to Redis with a short TTL.
+   * Fire-and-forget — cache write failure never blocks the response.
+   */
+  private async setEventInCache(id: string, event: unknown): Promise<void> {
+    if (!this.redisService.isConnected()) return;
+
+    try {
+      await this.redisService.set(
+        this.eventCacheKey(id),
+        JSON.stringify(event),
+        envConfig.EVENT_CACHE_TTL_SECONDS,
+      );
+    } catch (err) {
+      logger.warn(`Failed to cache event ${id}: ${err}`);
+    }
+  }
+
+  /**
+   * Removes stale event metadata from cache after any mutation.
+   * Fire-and-forget — invalidation failure is non-critical (TTL will clean up).
+   */
+  private async invalidateEventCache(id: string): Promise<void> {
+    if (!this.redisService.isConnected()) return;
+
+    try {
+      await this.redisService.del(this.eventCacheKey(id));
+      logger.debug(`Cache invalidated for event ${id}`);
+    } catch (err) {
+      logger.warn(`Failed to invalidate cache for event ${id}: ${err}`);
+    }
   }
 
   /**
@@ -223,11 +331,16 @@ export class EventService {
    * Used in: Booking detail enrichment flow
    * Triggered via: gRPC
    */
-  async findEventsByIdsWithSeats(eventIds: string[]) {
+  async findEventsByIdsWithSeats(
+    eventIds: string[],
+    page?: number,
+    limit?: number,
+    seatIds?: string[],
+  ) {
     if (!eventIds.length) {
       return [];
     }
 
-    return await this.eventRepository.findEventsByIdsWithSeats(eventIds);
+    return await this.eventRepository.findEventsByIdsWithSeats(eventIds, page, limit, seatIds);
   }
 }

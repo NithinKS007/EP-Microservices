@@ -36,8 +36,8 @@ export class BookingController {
   }
 
   async findBookingByIdWithDetails(req: AuthReq, res: Response): Promise<void> {
-    const data = await validateDto(GetBookingByIdRequestDto, req.params);
-    const booking = await this.bookingService.findBookingByIdWithDetails(data.id);
+    const data = await validateDto(GetBookingByIdRequestDto, { ...req.params, ...req.query });
+    const booking = await this.bookingService.findBookingByIdWithDetails(data);
     sendResponse(res, StatusCodes.OK, booking, "Booking fetched successfully");
   }
 

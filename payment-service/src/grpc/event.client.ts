@@ -2,8 +2,8 @@ import { envConfig } from "../config/env.config";
 import {
   createCircuitBreaker,
   createGrpcClient,
-  fromGrpcError,
-  Metadata,
+  executeUnaryGrpcCall,
+  findCircuitBreakerPolicy,
 } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
@@ -25,7 +25,7 @@ export class EventServiceGrpcClient {
   );
   private readonly lockSeatsBreaker = createCircuitBreaker<[LockSeatsRequest], LockSeatsResponse>({
     name: "payment.event.lock_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeLockSeats(data),
   });
   private readonly confirmSeatsBreaker = createCircuitBreaker<
@@ -33,7 +33,7 @@ export class EventServiceGrpcClient {
     ConfirmSeatsResponse
   >({
     name: "payment.event.confirm_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeConfirmSeats(data),
   });
   private readonly releaseSeatsBreaker = createCircuitBreaker<
@@ -41,7 +41,7 @@ export class EventServiceGrpcClient {
     ReleaseSeatsResponse
   >({
     name: "payment.event.release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeReleaseSeats(data),
   });
   private readonly bulkReleaseSeatsBreaker = createCircuitBreaker<
@@ -49,7 +49,7 @@ export class EventServiceGrpcClient {
     BulkReleaseSeatsResponse
   >({
     name: "payment.event.bulk_release_seats",
-    timeoutMs: 5000,
+    ...findCircuitBreakerPolicy("internalCommand"),
     action: (data) => this.executeBulkReleaseSeats(data),
   });
 
@@ -77,16 +77,10 @@ export class EventServiceGrpcClient {
    * Triggered via: gRPC
    */
   private executeConfirmSeats(data: ConfirmSeatsRequest): Promise<ConfirmSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.confirmSeats(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.confirmSeats(data, metadata, options, callback),
     });
   }
 
@@ -105,16 +99,10 @@ export class EventServiceGrpcClient {
    * Triggered via: gRPC
    */
   private executeReleaseSeats(data: ReleaseSeatsRequest): Promise<ReleaseSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.releaseSeats(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.releaseSeats(data, metadata, options, callback),
     });
   }
 
@@ -128,32 +116,20 @@ export class EventServiceGrpcClient {
   }
 
   private executeLockSeats(data: LockSeatsRequest): Promise<LockSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.lockSeats(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.lockSeats(data, metadata, options, callback),
     });
   }
 
   private executeBulkReleaseSeats(
     data: BulkReleaseSeatsRequest,
   ): Promise<BulkReleaseSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.bulkReleaseSeats(
-        data,
-        new Metadata(),
-        { deadline: new Date(Date.now() + this.GRPC_TIMEOUT_MS) },
-        (err, res) => {
-          if (err) return reject(fromGrpcError(err));
-          resolve(res);
-        },
-      );
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.bulkReleaseSeats(data, metadata, options, callback),
     });
   }
 }

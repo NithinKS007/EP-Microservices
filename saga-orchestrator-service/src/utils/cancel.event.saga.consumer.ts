@@ -103,8 +103,25 @@ export class CancelEventSagaConsumer {
         },
       });
 
-      const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({ eventId });
-      const bookingIds = bookingsResponse.bookings.map((booking) => booking.id);
+      const state = {
+        page: 1,
+        hasMore: true,
+        limit: 500
+      }
+      const bookingIds: string[] = [];
+
+      while (state.hasMore) {
+        const bookingsResponse = await this.bookingServiceGrpcClient.findBookingsByEvent({ eventId, page: state.page, limit: state.limit });
+        const batch = bookingsResponse.bookings || [];
+
+        if (batch.length === 0) {
+          state.hasMore = false;
+          break;
+        }
+
+        bookingIds.push(...batch.map((booking) => booking.id));
+        state.page++;
+      }
 
       if (bookingIds.length === 0) {
         await this.markStepSkipped({ sagaId, step: paymentStep });
@@ -157,9 +174,8 @@ export class CancelEventSagaConsumer {
       });
     } catch (err: unknown) {
       const error = this.normalizeError(err);
-      logger.error(`Cancel event saga failed permanently sagaId=${sagaId}`);
+      logger.error(`Cancel event saga failed permanently sagaId=${sagaId}. Attempting DLQ...`);
       await this.sendToDLQ(message, error);
-      return;
     }
   }
 
@@ -303,6 +319,7 @@ export class CancelEventSagaConsumer {
     } catch (dlqError: unknown) {
       const error = this.normalizeError(dlqError);
       logger.error(`Failed to send cancel event saga to DLQ ${error.message}`);
+      throw error; // Re-throw to trigger Kafka retry
     }
   }
 

@@ -25,7 +25,7 @@ export interface IBookingRepository extends DatabaseAdapter<
   BookingWhere
 > {
   findByIdempotencyKey(idempotencyKey: string): Promise<BookingModel | null>;
-  findBookingsByEventId(eventId: string): Promise<BookingModel[]>;
+  findBookingsByEventId(eventId: string, page?: number, limit?: number): Promise<BookingModel[]>;
   bulkCancelBookings(bookingIds: string[]): Promise<number>;
   findExpiredPendingBookings(limit?: number): Promise<BookingModel[]>;
   bulkExpireBookings(bookingIds: string[]): Promise<number>;
@@ -44,5 +44,6 @@ export interface IBookingRepository extends DatabaseAdapter<
     };
   }> | null>;
 
+  acquireAdvisoryLocks(seatIds: string[]): Promise<void>;
   findActiveBookingsBySeatIds(seatIds: string[]): Promise<{ seatId: string; bookingId: string; status: string }[]>;
 }

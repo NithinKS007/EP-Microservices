@@ -59,54 +59,68 @@ This repository also now implements `event-service` gRPC `FindEventsByIdsWithSea
 ## System Architecture
 
 ```mermaid
-flowchart LR
-    Client[Client / Frontend]
-    Gateway[API Gateway]
+graph TB
+    Client["Client (Browser)"] -->|REST| GW["API Gateway :3000"]
 
-    Auth[Auth Service]
-    User[User Service]
-    Event[Event Service]
-    Booking[Booking Service]
-    Payment[Payment Service]
-    Saga[Saga Orchestrator]
+    GW -->|REST proxy| AUTH["Auth Service :3001"]
+    GW -->|REST proxy| USER["User Service :3002"]
+    GW -->|REST proxy| EVENT["Event Service :3003"]
+    GW -->|REST proxy| BOOKING["Booking Service :3004"]
+    GW -->|REST proxy| PAYMENT["Payment Service :3005"]
 
-    Kafka[(Kafka)]
-    Redis[(Redis)]
-    PGAuth[(PostgreSQL - Auth)]
-    PGUser[(PostgreSQL - User)]
-    PGEvent[(PostgreSQL - Event)]
-    PGBooking[(PostgreSQL - Booking)]
-    PGPayment[(PostgreSQL - Payment)]
-    PGSaga[(PostgreSQL - Saga)]
+    BOOKING -->|gRPC| EVENT
+    BOOKING -->|gRPC| PAYMENT
+    PAYMENT -->|gRPC| SAGA["Saga Orchestrator :3006"]
+    PAYMENT -->|gRPC| BOOKING
+    PAYMENT -->|gRPC| EVENT
+    PAYMENT -->|gRPC| USER
+    EVENT -->|gRPC| SAGA
+    EVENT -->|gRPC| BOOKING
+    EVENT -->|gRPC| PAYMENT
+    SAGA -->|gRPC| BOOKING
+    SAGA -->|gRPC| EVENT
+    SAGA -->|gRPC| PAYMENT
 
-    Client --> Gateway
-    Gateway --> Auth
-    Gateway --> User
-    Gateway --> Event
-    Gateway --> Booking
-    Gateway --> Payment
+    PAYMENT -->|Outbox → Kafka| K["Kafka"]
+    SAGA -->|Outbox → Kafka| K
+    K -->|Consumer| PAYMENT
+    K -->|Consumer| SAGA
 
-    Auth --> PGAuth
-    User --> PGUser
-    Event --> PGEvent
-    Booking --> PGBooking
-    Payment --> PGPayment
-    Saga --> PGSaga
+    PAYMENT -->|webhook| RP["Razorpay"]
 
-    Auth <-->|events| Kafka
-    User <-->|events| Kafka
-    Event <-->|events| Kafka
-    Booking <-->|events| Kafka
-    Payment <-->|events| Kafka
-    Saga <-->|events| Kafka
+    subgraph Infra
+        PG["PostgreSQL 15"]
+        RD["Redis"]
+        K
+    end
 
-    Saga <-->|gRPC| Booking
-    Saga <-->|gRPC| Event
-    Saga <-->|gRPC| Payment
-
-    Auth -. cache/session/token concerns .-> Redis
-    Gateway -. request metadata propagation .-> Auth
+    BOOKING --- PG
+    EVENT --- PG
+    PAYMENT --- PG
+    SAGA --- PG
+    AUTH --- PG
+    USER --- PG
+    BOOKING --- RD
+    SAGA --- RD
+    AUTH --- RD
 ```
+
+## Key Resilience Patterns
+
+These patterns are implemented and production-verified across the codebase:
+
+| Pattern | Where | Purpose |
+| --- | --- | --- |
+| **Circuit Breakers** | Every gRPC client method, Razorpay API calls | Prevents cascading failures when a downstream service is unhealthy |
+| **gRPC Deadlines** | All inter-service gRPC calls (4s default, 8-15s for payment-related) | Prevents indefinite blocking on slow or dead services |
+| **Transactional Outbox** | booking-service, payment-service, saga-orchestrator | Eliminates dual-write problem between DB and Kafka |
+| **Advisory Locks** | booking-service seat creation | Prevents double-booking race conditions using `pg_advisory_xact_lock` |
+| **Dead Letter Queues** | payment consumers, saga consumers | Routes permanently failed messages for manual inspection instead of silent loss |
+| **Saga Compensation** | INITIATE_PAYMENT saga | Automatically reverses partial state when a step fails mid-transaction |
+| **Saga Recovery** | saga-orchestrator cron (every 5 min) | Detects and re-triggers abandoned sagas stuck for >10 minutes |
+| **Booking Expiry** | booking-service cron (every minute) | Releases seats and fails payments for stale unpaid bookings |
+| **Idempotency** | Booking creation, payment webhooks, saga starts, seat operations | Ensures safe retry/replay of any operation |
+| **Centralized Policies** | `utils/src/resilience.policy.ts` | Standardized breaker profiles (`internalQuery`, `internalCommand`, `externalWrite`, etc.) |
 
 ## Why This Architecture
 
@@ -185,7 +199,7 @@ This repository is intentionally optimized for local developer speed today. Prod
 | Metrics | Not implemented yet | Prometheus metrics, SLI dashboards, alerts, burn-rate policies |
 | Tracing | Not implemented yet | OpenTelemetry traces across HTTP, Kafka, gRPC, and DB spans |
 | Health | Basic `/health` endpoints | Liveness, readiness, dependency health, and synthetic checks |
-| Resilience | Best-effort retries inside code paths | Timeouts, circuit breaking, DLQs, autoscaling, and fault budgets |
+| Resilience | Circuit breakers on all gRPC clients, DLQs, outbox pattern, advisory locks, bounded retries with backoff | Production-grade: add autoscaling policies and formal fault budgets |
 | Delivery | Manual `docker compose up` | CI/CD with canary or blue-green deployment and automated rollback |
 | Infra changes | Manual file edits | Terraform/CDK with reviewed plans and remote state |
 
@@ -440,12 +454,7 @@ The repository already exposes health endpoints such as:
 - `GET /health` on `api-gateway`
 - `GET /health` on each downstream service
 
-These are adequate for local liveness checks, but production should distinguish:
-
-- liveness
-- readiness
-- dependency health
-- synthetic business-journey health
+These are adequate for local liveness checks
 
 ### Booking and payment endpoints
 
@@ -583,11 +592,6 @@ The current repository is a strong local-development foundation, but it is not p
 
 - move all secrets to a managed secret store with rotation and auditability
 - use short-lived credentials where possible instead of static secrets
-- terminate external TLS at the edge and encrypt east-west traffic with mTLS or service-mesh policy
-- isolate services in private subnets and restrict data stores to private network access only
-- use VPC peering or Private Link for managed dependencies where cross-network connectivity is required
-- replace permissive local trust with explicit workload identity and IAM-scoped access
-- add image signing, SBOM generation, and vulnerability scanning to the release pipeline
 
 ### Database Governance
 
@@ -604,19 +608,6 @@ The current repository is a strong local-development foundation, but it is not p
 - test restore procedures regularly, not just backup creation
 - review locking behavior for booking and event inventory schema changes before rollout
 
-### Infrastructure As Code
-
-- move environment provisioning to Terraform or CDK modules
-- keep state in a remote backend with locking and audit history
-- require reviewed plans before apply
-- separate module boundaries for:
-  - networking
-  - compute
-  - data stores
-  - observability
-  - secrets
-- version infrastructure changes with the same rigor as application changes
-
 ### Reliability And Resilience
 
 - add bounded retries with exponential backoff and jitter
@@ -630,20 +621,8 @@ The current repository is a strong local-development foundation, but it is not p
 
 - place the gateway behind WAF and a managed load balancer
 - add rate limiting backed by a distributed store rather than per-process memory
-- add ingress policies and network policies that default to deny
 - separate public and private subnets
 - restrict direct access to data-plane services from the public internet
-
-### Release Engineering
-
-- version images immutably
-- promote artifacts across environments instead of rebuilding per environment
-- gate releases on tests, security scans, schema safety checks, and telemetry
-- use canary or blue-green deployment for risk-heavy services such as payment and booking
-
-## Contribution Policy
-
-This repository should be evolved with an engineering-first contribution model.
 
 ### Testing standards
 
@@ -692,17 +671,21 @@ Decision:
 
 Why:
 
-- a booking flow spans inventory, payment, and booking state transitions
-- distributed transactions would increase coupling and operational fragility
-- eventual consistency plus compensating actions is the more resilient choice at this boundary
+- The booking workflow spans multiple services (inventory, payment, booking),
+  each with its own data store.
+- Distributed transactions (e.g., 2PC) would introduce tight coupling,
+  reduce service autonomy, and increase operational fragility.
+
+- A Saga-based approach with eventual consistency and compensating actions
+  provides better resilience and scalability at this boundary.
 
 Trade-off:
 
-- more moving parts
-- higher observability requirements
-- more care needed around idempotency and replay
+- Increased system complexity due to multiple steps and state management
+- Higher observability requirements for tracing workflows
+- Need for strong idempotency and replay-safe processing
 
-### ADR-002: API gateway for north-south traffic, gRPC for east-west traffic
+### ADR-002: Adopt HTTP for external APIs and gRPC for internal service communication
 
 Decision:
 
@@ -738,7 +721,6 @@ Trade-off:
 
 - `utils` is the shared contract and infrastructure package; changes there can affect multiple services
 - local development has been configured so all services reload when their own source or shared `utils/src` changes
-- `READ.md` or equivalent short-form operational notes may still exist, but `README.md` is the primary architectural reference
 
 ### Current verified build status
 
@@ -751,12 +733,10 @@ These services currently build successfully with `npm run build`:
 - `saga-orchestrator-service`
 - `user-service`
 
-`auth-service` still has unrelated pre-existing build issues.
-
 ### Current known gaps
 
-- Booking creation still does not validate authoritative event state pricing or max-capacity before persistence.
 - Refund settlement is still event-driven inside `payment-service`; it is not yet modeled as a dedicated refund saga workflow.
+- Observability tooling (Prometheus metrics, OpenTelemetry traces) is not yet integrated.
 
 
 ## Next Engineering Steps

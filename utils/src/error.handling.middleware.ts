@@ -66,6 +66,18 @@ export class InternalServerError extends AppError {
   }
 }
 
+export class ServiceUnavailableError extends AppError {
+  constructor(message: string) {
+    super(message, StatusCodes.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+  }
+}
+
+export class TimeoutError extends AppError {
+  constructor(message: string) {
+    super(message, StatusCodes.GatewayTimeout, "TIMEOUT");
+  }
+}
+
 /**
  * Express middleware to handle all AppError instances.
  * Sends a standardized response using `sendResponse`.

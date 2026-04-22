@@ -1,10 +1,11 @@
 import "reflect-metadata";
 import { container } from "./container";
-import { KafkaService, logger, RedisService } from "../../utils/src";
-import { app } from "./app";
+import { KafkaService, logger, RateLimiter, RedisService } from "../../utils/src";
+import { createApp } from "./app";
 import { envConfig } from "./config/env.config";
 import { TokenCleanupJob } from "./utils/cronjob";
 import { EmailAvailabilityService } from "./services/email.availability.service";
+import { closePrisma, connectPrisma } from "./utils/dbconfig";
 
 let kafkaService: KafkaService | null = null;
 
@@ -21,6 +22,9 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
 
   try {
+    // Close Database Connection
+    await closePrisma();
+
     if (envConfig.KAFKA_ENABLED === "true" && kafkaService) {
       await kafkaService.disconnect();
     }
@@ -54,16 +58,20 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 const startServer = async () => {
   try {
-    const server = app.listen(envConfig.PORT, () => {
-      logger.info(
-        `Server is running on port ${envConfig.PORT} with service name "${envConfig.SERVICE_NAME}"`,
-      );
-    });
+    // Connect to Database
+    const databaseConnected = await connectPrisma();
+
+    if (!databaseConnected) {
+      console.error("❌ Failed to connect to database. Exiting...");
+      process.exit(1);
+    }
 
     kafkaService = container.resolve<KafkaService>("kafkaService");
     const redisService = container.resolve<RedisService>("redisService");
     const emailAvailabilityService =
       container.resolve<EmailAvailabilityService>("emailAvailabilityService");
+    const rateLimiter = container.resolve<RateLimiter>("rateLimiter");
+    const tokenCleanupJob = container.resolve<TokenCleanupJob>("tokenCleanupJob");
 
     if (envConfig.KAFKA_ENABLED === "true") {
       await kafkaService.connectProducer();
@@ -80,7 +88,15 @@ const startServer = async () => {
       );
     }
 
-    const tokenCleanupJob = container.resolve<TokenCleanupJob>("tokenCleanupJob");
+    rateLimiter.addClient(redisService.returnRawClient());
+    const app = createApp(rateLimiter);
+
+    const server = app.listen(envConfig.PORT, () => {
+      logger.info(
+        `Server is running on port ${envConfig.PORT} with service name "${envConfig.SERVICE_NAME}"`,
+      );
+    });
+
     tokenCleanupJob.start();
 
     server.on("error", (error: NodeJS.ErrnoException) => {

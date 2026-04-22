@@ -9,9 +9,12 @@ export { logger } from "./logger";
 export { DatabaseAdapter } from "./IBase.repository";
 export { KafkaService } from "./kafka.service";
 export { RedisService } from "./redis.service";
-export { createCircuitBreaker } from "./circuit.breaker";
+export { createCircuitBreaker, ignoreExpectedCircuitBreakerError } from "./circuit.breaker";
+export type { CircuitBreakerConfig, CircuitBreakerHandle, CircuitState } from "./circuit.breaker";
+export { circuitBreakerPolicies, findCircuitBreakerPolicy } from "./resilience.policy";
 export { JwtService } from "./jwt.service";
-export { createGrpcClient } from "./grpc/grpc.client";
+export { createGrpcClient, executeUnaryGrpcCall } from "./grpc/grpc.client";
+export { executeHttpRequest } from "./http.client";
 export { startGrpcServer, GrpcHandler, GrpcServiceDef } from "./grpc/grpc.server";
 export { Metadata } from "@grpc/grpc-js";
 export {
@@ -104,3 +107,15 @@ export { EmailService } from "./email.service";
 export { TokenService } from "./token.service";
 export { AuthReq, CustomMiddleware, WithMetaData } from "./auth.middleware";
 export { CronRunner } from "./cron.job";
+export {
+  AppError,
+  ConflictError,
+  DatabaseError,
+  ForbiddenError,
+  InternalServerError,
+  NotFoundError,
+  ServiceUnavailableError,
+  TimeoutError,
+  UnauthorizedError,
+  ValidationError,
+} from "./error.handling.middleware";

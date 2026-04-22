@@ -8,9 +8,10 @@ import { envConfig } from "./config/env.config";
 import { prismaErrorHandler } from "./prisma.error.handler";
 import { AppError } from "../../utils/src/error.handling.middleware";
 
+export const createApp = (rateLimiter: RateLimiter) => {
 const app = express();
 
-// Security & core middleware
+  // Security & core middleware
 app.use(helmet());
 app.use(
   cors({
@@ -18,8 +19,12 @@ app.use(
     credentials: true,
   }),
 );
-const limit = new RateLimiter();
-app.use(limit.apiGatewayLimiter());
+
+// Trust proxy is essential for identifying correct client IPs behind load balancers/proxies
+app.set("trust proxy", 1);
+
+// Apply rate limiter immediately before other routes
+app.use(rateLimiter.apiGatewayLimiter());
 app.use(morgan("dev"));
 
 /**
@@ -60,4 +65,5 @@ app.use((err: Error | AppError, req: Request, res: Response, next: NextFunction)
   sendResponse(res, statusCode, null, message);
 });
 
-export { app };
+  return app;
+};

@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from "../generated/prisma/client";
 import { PrismaAdapter } from "../../../utils/src/IBase.repository";
 import { BaseRepository } from "./base.repository";
-import { EventModel, IEventRepository } from "interface/IEvent.repository";
+import { EventModel, IEventRepository } from "./../interface/IEvent.repository";
 
 type TModel = Prisma.EventGetPayload<Prisma.EventFindUniqueArgs>;
 type TCreate = Prisma.EventCreateArgs["data"];
@@ -10,8 +10,7 @@ type TWhere = Prisma.EventWhereInput;
 
 export class EventRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
-  implements IEventRepository
-{
+  implements IEventRepository {
   private readonly prisma: PrismaClient | Prisma.TransactionClient;
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
     super(new PrismaAdapter(prisma.event));
@@ -68,7 +67,12 @@ export class EventRepository
     };
   }
 
-  async findEventsByIdsWithSeats(eventIds: string[]): Promise<
+  async findEventsByIdsWithSeats(
+    eventIds: string[],
+    page?: number,
+    limit?: number,
+    seatIds?: string[],
+  ): Promise<
     Prisma.EventGetPayload<{
       include: {
         seats: true;
@@ -86,7 +90,11 @@ export class EventRepository
         },
       },
       include: {
-        seats: true,
+        seats: seatIds && seatIds.length > 0
+          ? { where: { id: { in: seatIds } } }
+          : page !== undefined && limit !== undefined
+            ? { skip: (page - 1) * limit, take: limit }
+            : true,
       },
       orderBy: {
         eventDate: "desc",

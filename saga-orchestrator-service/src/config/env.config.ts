@@ -10,10 +10,16 @@ interface Env {
   KAFKA_ENABLED: string;
 
   DATABASE_URL: string;
+  NODE_ENV: string;
 
   EVENT_SERVICE_URL_GRPC: string;
   BOOKING_SERVICE_URL_GRPC: string;
   PAYMENT_SERVICE_URL_GRPC: string;
+
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD: string;
+  REDIS_DB: number;
 }
 
 export const envConfig: Env = {
@@ -26,9 +32,15 @@ export const envConfig: Env = {
   KAFKA_ENABLED: process.env.KAFKA_ENABLED || "true",
 
   DATABASE_URL:
-    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/postgres",
+    process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/ep_saga_orchestrator_service",
+  NODE_ENV: process.env.NODE_ENV || "development",
 
   EVENT_SERVICE_URL_GRPC: "event:50052",
   BOOKING_SERVICE_URL_GRPC: "booking:50053",
   PAYMENT_SERVICE_URL_GRPC: "payment:50054",
+
+  REDIS_HOST: process.env.REDIS_HOST || "redis",
+  REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
+  REDIS_DB: Number(process.env.REDIS_DB) || 0,
 };

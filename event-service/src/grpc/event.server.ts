@@ -119,9 +119,9 @@ export class EventGrpcController {
     call: ServerUnaryCall<FindEventsByIdsWithSeatsRequest, FindEventsByIdsWithSeatsResponse>,
     callback: SendUnaryData<FindEventsByIdsWithSeatsResponse>,
   ) {
-    const { eventIds } = call.request;
+    const { eventIds, seatPage, seatLimit, seatIds } = call.request;
     this.eventService
-      .findEventsByIdsWithSeats(eventIds)
+      .findEventsByIdsWithSeats(eventIds, seatPage, seatLimit, seatIds)
       .then((events) =>
         callback(null, {
           success: true,

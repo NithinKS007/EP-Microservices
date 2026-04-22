@@ -1,5 +1,5 @@
 import { envConfig } from "../config/env.config";
-import { createGrpcClient, fromGrpcError } from "../../../utils/src";
+import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall } from "../../../utils/src";
 import {
   BookingServiceClient,
   BulkCancelBookingsRequest,
@@ -11,35 +11,75 @@ import {
 } from "../../../utils/src";
 
 export class BookingServiceGrpcClient {
+  private readonly GRPC_TIMEOUT_MS = 4000;
   private client = createGrpcClient(
     BookingServiceClient,
     envConfig.BOOKING_SERVICE_URL_GRPC || "booking:50053",
   );
+  private readonly findBookingsByEventBreaker = createCircuitBreaker<
+    [FindBookingsByEventRequest],
+    FindBookingsByEventResponse
+  >({
+    name: "event.booking.find_by_event",
+    timeoutMs: 5000,
+    action: (data) => this.executeFindBookingsByEvent(data),
+  });
+  private readonly updateBookingStatusBreaker = createCircuitBreaker<
+    [UpdateBookingStatusRequest],
+    UpdateBookingStatusResponse
+  >({
+    name: "event.booking.update_status",
+    timeoutMs: 5000,
+    action: (data) => this.executeUpdateBookingStatus(data),
+  });
+  private readonly bulkCancelBookingsBreaker = createCircuitBreaker<
+    [BulkCancelBookingsRequest],
+    BulkCancelBookingsResponse
+  >({
+    name: "event.booking.bulk_cancel",
+    timeoutMs: 5000,
+    action: (data) => this.executeBulkCancelBookings(data),
+  });
 
   findBookingsByEvent(data: FindBookingsByEventRequest): Promise<FindBookingsByEventResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findBookingsByEvent(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.findBookingsByEventBreaker.fire(data);
   }
 
   updateBookingStatus(data: UpdateBookingStatusRequest): Promise<UpdateBookingStatusResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.updateBookingStatus(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.updateBookingStatusBreaker.fire(data);
   }
 
   bulkCancelBookings(data: BulkCancelBookingsRequest): Promise<BulkCancelBookingsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.bulkCancelBookings(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
+    return this.bulkCancelBookingsBreaker.fire(data);
+  }
+
+  private executeFindBookingsByEvent(
+    data: FindBookingsByEventRequest,
+  ): Promise<FindBookingsByEventResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findBookingsByEvent(data, metadata, options, callback),
+    });
+  }
+
+  private executeUpdateBookingStatus(
+    data: UpdateBookingStatusRequest,
+  ): Promise<UpdateBookingStatusResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.updateBookingStatus(data, metadata, options, callback),
+    });
+  }
+
+  private executeBulkCancelBookings(
+    data: BulkCancelBookingsRequest,
+  ): Promise<BulkCancelBookingsResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.bulkCancelBookings(data, metadata, options, callback),
     });
   }
 }

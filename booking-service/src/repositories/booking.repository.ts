@@ -11,8 +11,7 @@ type TWhere = Prisma.BookingWhereInput;
 
 export class BookingRepository
   extends BaseRepository<TModel, TCreate, TUpdate, TWhere>
-  implements IBookingRepository
-{
+  implements IBookingRepository {
   private readonly prisma: PrismaClient | Prisma.TransactionClient;
 
   constructor({ prisma }: { prisma: PrismaClient | Prisma.TransactionClient }) {
@@ -36,10 +35,12 @@ export class BookingRepository
    * Used in: Cancel Event Saga
    * Triggered via: gRPC
    */
-  async findBookingsByEventId(eventId: string): Promise<TModel[]> {
+  async findBookingsByEventId(eventId: string, page: number = 1, limit: number = 500): Promise<TModel[]> {
     return await this.prisma.booking.findMany({
       where: { eventId },
       orderBy: { createdAt: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
@@ -76,7 +77,7 @@ export class BookingRepository
   async findExpiredPendingBookings(limit = 100): Promise<TModel[]> {
     return await this.prisma.booking.findMany({
       where: {
-        expiresAt: { lt: new Date() },
+        expiresAt: { lte: new Date() },
         status: {
           in: ["PENDING", "PAYMENT_INITIATED"],
         },
@@ -170,6 +171,26 @@ export class BookingRepository
   }
 
   /**
+   * Acquires integer-based transaction-level advisory locks for the given seat IDs.
+   * Eliminates Time-Of-Check-To-Time-Of-Use (TOCTOU) concurrency race conditions natively in PostgreSQL.
+   */
+  async acquireAdvisoryLocks(seatIds: string[]): Promise<void> {
+    if (seatIds.length === 0) return;
+
+    // Sort to prevent deadlocks when concurrent transactions book overlapping sets of seats
+    const sortedIds = [...seatIds].sort();
+
+    for (const seatId of sortedIds) {
+      await this.prisma.$executeRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtext(${seatId} || '_1'),
+          hashtext(${seatId} || '_2')
+        )
+      `;
+    }
+  }
+
+  /**
    * Finds seats that are currently held by an active (non-terminal) booking.
    * Used in: Booking create flow to prevent double-booking seats.
    * Triggered via: REST
@@ -181,9 +202,13 @@ export class BookingRepository
       where: {
         seatId: { in: seatIds },
         booking: {
-          status: {
-            in: ["PENDING", "PAYMENT_INITIATED", "CONFIRMED"],
-          },
+          OR: [
+            { status: "CONFIRMED" },
+            {
+              status: { in: ["PENDING", "PAYMENT_INITIATED"] },
+              expiresAt: { gt: new Date() },
+            },
+          ]
         },
       },
       select: {

@@ -1,5 +1,5 @@
 import { envConfig } from "../config/env.config";
-import { createGrpcClient, fromGrpcError } from "../../../utils/src";
+import { createCircuitBreaker, createGrpcClient, executeUnaryGrpcCall, findCircuitBreakerPolicy } from "../../../utils/src";
 import {
   BulkReleaseSeatsRequest,
   BulkReleaseSeatsResponse,
@@ -11,10 +11,35 @@ import {
 } from "../../../utils/src";
 
 export class EventServiceGrpcClient {
+  private readonly GRPC_TIMEOUT_MS = 4000;
   private client = createGrpcClient(
     EventServiceClient,
     envConfig.EVENT_SERVICE_URL_GRPC || "event:50052",
   );
+  private readonly bulkReleaseSeatsBreaker = createCircuitBreaker<
+    [BulkReleaseSeatsRequest],
+    BulkReleaseSeatsResponse
+  >({
+    name: "booking.event.bulk_release_seats",
+    ...findCircuitBreakerPolicy("internalCommand"),
+    action: (data) => this.executeBulkReleaseSeats(data),
+  });
+  private readonly findEventsByIdsWithSeatsBreaker = createCircuitBreaker<
+    [FindEventsByIdsWithSeatsRequest],
+    FindEventsByIdsWithSeatsResponse
+  >({
+    name: "booking.event.find_events_with_seats",
+    ...findCircuitBreakerPolicy("internalQuery"),
+    action: (data) => this.executeFindEventsByIdsWithSeats(data),
+  });
+  private readonly confirmSeatsBreaker = createCircuitBreaker<
+    [ConfirmSeatsRequest],
+    ConfirmSeatsResponse
+  >({
+    name: "booking.event.confirm_seats",
+    ...findCircuitBreakerPolicy("internalCommand"),
+    action: (data) => this.executeConfirmSeats(data),
+  });
 
   /**
    * Releases seats for expired bookings.
@@ -22,12 +47,7 @@ export class EventServiceGrpcClient {
    * Triggered via: gRPC
    */
   bulkReleaseSeats(data: BulkReleaseSeatsRequest): Promise<BulkReleaseSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.bulkReleaseSeats(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.bulkReleaseSeatsBreaker.fire(data);
   }
 
   /**
@@ -38,12 +58,7 @@ export class EventServiceGrpcClient {
   findEventsByIdsWithSeats(
     data: FindEventsByIdsWithSeatsRequest,
   ): Promise<FindEventsByIdsWithSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.findEventsByIdsWithSeats(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
-    });
+    return this.findEventsByIdsWithSeatsBreaker.fire(data);
   }
 
   /**
@@ -52,11 +67,34 @@ export class EventServiceGrpcClient {
    * Triggered via: gRPC
    */
   confirmSeats(data: ConfirmSeatsRequest): Promise<ConfirmSeatsResponse> {
-    return new Promise((resolve, reject) => {
-      this.client.confirmSeats(data, (err, res) => {
-        if (err) return reject(fromGrpcError(err));
-        resolve(res);
-      });
+    return this.confirmSeatsBreaker.fire(data);
+  }
+
+  private executeBulkReleaseSeats(
+    data: BulkReleaseSeatsRequest,
+  ): Promise<BulkReleaseSeatsResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.bulkReleaseSeats(data, metadata, options, callback),
+    });
+  }
+
+  private executeFindEventsByIdsWithSeats(
+    data: FindEventsByIdsWithSeatsRequest,
+  ): Promise<FindEventsByIdsWithSeatsResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.findEventsByIdsWithSeats(data, metadata, options, callback),
+    });
+  }
+
+  private executeConfirmSeats(data: ConfirmSeatsRequest): Promise<ConfirmSeatsResponse> {
+    return executeUnaryGrpcCall({
+      timeoutMs: this.GRPC_TIMEOUT_MS,
+      invoke: (metadata, options, callback) =>
+        this.client.confirmSeats(data, metadata, options, callback),
     });
   }
 }

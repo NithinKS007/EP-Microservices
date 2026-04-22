@@ -45,6 +45,8 @@ message FindBookingResponse {
 
 message FindBookingsByEventRequest {
   string event_id = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
 }
 
 message FindBookingsByEventResponse {

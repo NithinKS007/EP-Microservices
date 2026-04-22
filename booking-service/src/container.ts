@@ -7,7 +7,7 @@ import { BookingController } from "./controllers/booking.controller";
 import { envConfig } from "./config/env.config";
 import { prisma } from "./utils/dbconfig";
 import { BookingGrpcController } from "./grpc/booking.server";
-import { CronRunner, CustomMiddleware } from "../../utils/src";
+import { CronRunner, CustomMiddleware, RedisService } from "../../utils/src";
 import { UnitOfWork } from "./repositories/unity.of.work";
 import { OutboxEventRepository } from "./repositories/outbox.event.repository";
 import { OutboxWorker } from "./utils/outbox.worker";
@@ -20,6 +20,12 @@ const clientId = envConfig.KAFKA_CLIENT_ID;
 const groupId = envConfig.KAFKA_GROUP_ID;
 const brokers = envConfig.KAFKA_BROKERS?.split(",").map((b) => b.trim());
 const topics: { topic: string }[] = [];
+
+const redisHost = envConfig.REDIS_HOST;
+const redisPort = envConfig.REDIS_PORT;
+const redisPassword = envConfig.REDIS_PASSWORD;
+const redisDb = envConfig.REDIS_DB;
+const serviceName = envConfig.SERVICE_NAME;
 
 container.register({
   prisma: asValue(prisma),
@@ -47,7 +53,22 @@ container.register({
   outboxWorker: asClass(OutboxWorker).scoped(),
   eventServiceGrpcClient: asClass(EventServiceGrpcClient).scoped(),
   paymentServiceGrpcClient: asClass(PaymentServiceGrpcClient).scoped(),
-  cronRunner: asClass(CronRunner).scoped(),
+
+  redisService: asClass(RedisService)
+    .singleton()
+    .inject(() => ({
+      host: redisHost,
+      port: redisPort,
+      password: redisPassword,
+      db: redisDb,
+    })),
+
+  cronRunner: asClass(CronRunner)
+    .scoped()
+    .inject(() => ({
+      serviceName,
+    })),
+
   bookingExpiryJob: asClass(BookingExpiryJob).scoped(),
   customMiddleware: asClass(CustomMiddleware).scoped(),
 });
